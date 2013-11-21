@@ -536,3 +536,44 @@ function zariz_node_info() {
     ),
   );
 }
+
+/**
+ * Implements hook_field_create_instance().
+ *
+ * Add UUID field to group content.
+ */
+function zariz_field_create_instance($instance) {
+  if (!og_is_group_audience_field($instance['field_name'])) {
+    // Bundle is not a group content.
+    return;
+  }
+
+  $field_name = 'field_uuid';
+
+  if (!field_info_field($field_name)) {
+    $field = array(
+      'cardinality' => '1',
+      'entity_types' => array(),
+      'field_name' => $field_name,
+      'module' => 'text',
+      'type' => 'text',
+    );
+    field_create_field($field);
+  }
+
+  if (!field_info_instance($instance['entity_type'], $field_name, $instance['bundle'])) {
+    $instance = array(
+      'entity_type' => $instance['entity_type'],
+      'field_name' => $field_name,
+      'bundle' => $instance['bundle'],
+      'label' => 'UUID',
+      'description' => 'Unique ID.',
+      'widget' => array(
+        'active' => 1,
+        'module' => 'text',
+        'type' => 'text',
+      ),
+    );
+    field_create_instance($instance);
+  }
+}
