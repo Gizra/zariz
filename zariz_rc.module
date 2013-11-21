@@ -1,0 +1,520 @@
+<?php
+
+/**
+ * @file
+ * Content Revision Control.
+ */
+
+/**
+ * Implements hook_entity_info().
+ */
+function zariz_rc_entity_info() {
+  $items['tree'] = array(
+    'label' => t('Tree'),
+    'controller class' => 'EntityAPIController',
+    'entity class' => 'Tree',
+    'base table' => 'zariz_rc_tree',
+    'fieldable' => TRUE,
+    'entity keys' => array(
+      'id' => 'tid',
+    ),
+    'bundles' => array(
+      'tree' => array(
+        'label' => t('Tree'),
+      ),
+    ),
+    'view modes' => array(
+      'full' => array(
+        'label' => t('Full'),
+        'custom settings' => FALSE,
+      ),
+    ),
+    'module' => 'zariz_rc',
+    'metadata controller class' => 'EntityDefaultMetadataController',
+  );
+  return $items;
+}
+
+
+/**
+ * Create a new branch form an existing one.
+ *
+ * @param $branch_name
+ *   The branch name.
+ * @param $original_branch
+ *   Optional; The node ID or object of the original branch.
+ */
+function zariz_rc_create_branch($branch_name, $original_branch = FALSE) {
+  global $user;
+
+  // Check branch doesn't exist already.
+  $query = new EntityFieldQuery();
+  $result = $query
+    ->entityCondition('entity_type', 'node')
+    ->entityCondition('bundle', 'branch')
+    ->propertyCondition('title', $branch_name)
+    ->count()
+    ->execute();
+
+  if ($result) {
+    throw new Exception(format_string('Branch @name already exists', array('@name' => $branch_name)));
+  }
+
+  $values = array(
+    'type' => 'branch',
+    'title' => $branch_name,
+    'uid' => $user->uid,
+  );
+  $node = entity_create('node', $values);
+
+  $wrapper = entity_metadata_wrapper('node', $node);
+  $wrapper->{OG_GROUP_FIELD}->set(TRUE);
+
+  if ($original_branch) {
+    $branch_wrapper = entity_metadata_wrapper('node', $original_branch);
+    $branch_id = $branch_wrapper->getIdentifier();
+
+    $wrapper->field_branch->set($original_branch);
+
+    // Get the last tree created in the original branch.
+    $query = new EntityFieldQuery();
+    $result = $query
+      ->entityCondition('entity_type', 'tree')
+      ->fieldCondition('nid', $branch_id)
+      ->range(0, 1)
+      ->propertyOrderBy('tid', 'DESC')
+      ->execute();
+
+    if (!empty($result['tree'])) {
+      $tid = key($result['tree']);
+      $wrapper->field_tree->set($tid);
+    }
+  }
+
+  $wrapper->save();
+  return $wrapper->value();
+}
+
+/**
+ * Include new content from the parent branch.
+ *
+ * As we do not duplicate content between branches, we simply update the "Last
+ * node" field to point to the latest node in the parent branch.
+ *
+ * @param $branch_nid
+ *   The branch node ID or object.
+ */
+function zariz_rc_update_content_from_parent_branch($branch_nid) {
+  $wrapper = entity_metadata_wrapper('node', $branch_nid);
+
+  if (!$parent_id = $wrapper->field_branch->getIdentifier()) {
+    // Nothing to update, as the branch has no parent.
+    return;
+  }
+
+  // Get the last node ID.
+  $query = new EntityFieldQuery();
+  $result = $query
+    ->entityCondition('entity_type', 'node')
+    // @todo: Remove hardcoding to article
+    ->entityCondition('bundle', 'article')
+    ->fieldCondition(OG_AUDIENCE_FIELD, 'target_id', $parent_id)
+    ->range(0, 1)
+    ->propertyOrderBy('nid', 'DESC')
+    ->execute();
+
+  if (empty($result['node'])) {
+    // Parent branch has no content.
+    return;
+  }
+
+  $last_nid = key($result['node']);
+  $wrapper->field_last_node->set($last_nid);
+  $wrapper->save();
+}
+
+/**
+ * Get the node IDs of the parents of the branch, including the node itself.
+ *
+ * @param $branch_nid
+ *   The branch ID or node.
+ * @param $ids
+ *   Array of the parent IDs, used in this recursive function.
+ * @return
+ *   array with the branch node ID, and it's parents. The top most parent is the
+ *   last element in the array.
+ */
+function zariz_rc_get_branch_parents_ids($branch_nid, $ids = array()) {
+  $wrapper = entity_metadata_wrapper('node', $branch_nid);
+  $branch_node = $wrapper->value();
+  $ids[] = $branch_node->nid;
+
+  if (!$parent_node = $wrapper->field_branch->value()) {
+    // We reached the top most parent.
+    return $ids;
+  }
+
+  // Call function, with the parent node.
+  $ids = zariz_rc_get_branch_parents_ids($parent_node, $ids);
+  return $ids;
+}
+
+/**
+ * Get the node IDs of "deleted" nodes, that should be excluded.
+ *
+ * @param $branch_nid
+ *   The branch node.
+ * @return
+ *   array with the node IDs.
+ */
+function zariz_rc_get_deleted_node_ids($branch_nid) {
+  $branch_ids = zariz_rc_get_branch_parents_ids($branch_nid);
+
+  // Get all the deleted node IDs in the branches.
+  $query = new EntityFieldQuery();
+  $result = $query
+    ->entityCondition('entity_type', 'node')
+    // @todo: Remove hardcoding to article
+    ->entityCondition('bundle', 'article')
+    ->fieldCondition('field_deleted', 'value', TRUE)
+    ->fieldCondition(OG_AUDIENCE_FIELD, 'target_id', $branch_ids, 'IN')
+    ->execute();
+
+  if (empty($result['node'])) {
+    return array();
+  }
+
+  // Load all the deleted nodes, to get their UUID, so we can exclude also their
+  // non-deleted version.
+  $uuids = array();
+  foreach (node_load_multiple(array_keys($result['node'])) as $node) {
+    $wrapper = entity_metadata_wrapper('node', $node);
+    $uuid = $wrapper->field_uuid->value();
+    $uuids[$uuid] = TRUE;
+  }
+
+  // Now query for the nodes, based on the UUID in the parent branches.
+  $query = new EntityFieldQuery();
+  $result = $query
+    ->entityCondition('entity_type', 'node')
+    // @todo: Remove hardcoding to article
+    ->entityCondition('bundle', 'article')
+    ->fieldCondition(OG_AUDIENCE_FIELD, 'target_id', $branch_ids, 'IN')
+    ->fieldCondition('field_uuid', 'value', array_keys($uuids), 'IN')
+    ->execute();
+
+  return array_keys($result['node']);
+}
+
+/**
+ * Implements hook_field_access().
+ */
+function zariz_rc_field_access($op, $field, $entity_type, $entity, $account) {
+  if ($op == 'edit' && $field['field_name'] == 'field_uuid') {
+    return FALSE;
+  }
+}
+
+/**
+ * Implements hook_node_presave().
+ *
+ * Populate a unique ID value.
+ */
+function zariz_rc_node_presave($node) {
+  if (!empty($node->nid)) {
+    return;
+  }
+
+  if (!og_is_group_content_type('node', $node->type)) {
+    return;
+  }
+
+  $wrapper = entity_metadata_wrapper('node', $node);
+  if (!$uuid = $wrapper->field_uuid->value()) {
+    // UUID doesn't exist.
+    $uuid = md5(rand());
+    $wrapper->field_uuid->set($uuid);
+  }
+}
+
+/**
+ * Implements hook_node_insert().
+ *
+ * Add node to branch's flag.
+ */
+function zariz_rc_node_insert($node) {
+  if (!og_is_group_content_type('node', $node->type)) {
+    // Not a group content.
+    return;
+  }
+
+  // Add node to tree.
+  $wrapper = entity_metadata_wrapper('node', $node);
+  $branch_id = $wrapper->{OG_AUDIENCE_FIELD}->getIdentifier();
+
+  $insert = array('node' => array($node));
+  zariz_rc_create_tree($branch_id, $insert);
+}
+
+/**
+ * Returns the latest tree object of a branch.
+ *
+ * @param $branch_id
+ *   The branch ID.
+ *
+ * @return
+ *   The Tree entity object, or FALSE.
+ *
+ */
+function zariz_rc_get_latest_tree($branch_id) {
+  $query = new EntityFieldQuery();
+  $result = $query
+    ->entityCondition('entity_type', 'tree')
+    ->propertyCondition('nid', $branch_id)
+    ->range(0, 1)
+    ->propertyOrderBy('tid', 'DESC')
+    ->execute();
+
+  if (empty($result['tree'])) {
+    return FALSE;
+  }
+
+  $tid = key($result['tree']);
+  return entity_load_single('tree', $tid);
+}
+
+/**
+ * Add entity to a Tree entity.
+ *
+ * This creates a snapshot of the content on a specific "revision".
+ *
+ * @param $branch_id
+ *   The branch node ID.
+ * @param $insert
+ *   Array of entities objects to "insert", keyed by entity type.
+ * @param $delete
+ *   Array of entities objects to "delete", keyed by entity type.
+ *
+ * @return Tree
+ *   Returns a Tree entity object.
+ */
+function zariz_rc_create_tree($branch_id, $insert = array(), $delete = array()) {
+  if (!$parent_tree = zariz_rc_get_latest_tree($branch_id)) {
+    // Get tree from branch, if exists.
+    $wrapper = entity_metadata_wrapper('node', $branch_id);
+    $parent_tree = $wrapper->field_tree->value();
+  }
+
+  $data = array();
+  if ($parent_tree && $parent_tree->nid == $branch_id) {
+    // The parent tree is from the same branch. Each branch holds
+    // only the entities that are explicitly saved on that branch.
+    $data = $parent_tree->data;
+  }
+
+  // Prepare the new data.
+  foreach ($insert as $entity_type => $entities) {
+    foreach ($entities as $entity) {
+      $wrapper = entity_metadata_wrapper($entity_type, $entity);
+      $uuid = $wrapper->field_uuid->value();
+      $id = $wrapper->getIdentifier();
+
+      $data['insert'][$entity_type][$uuid] = $id;
+
+      // Remove it from the "delete" if it was there.
+      unset($data['delete'][$entity_type][$uuid]);
+    }
+  }
+
+  foreach ($delete as $entity_type => $entities) {
+    foreach ($entities as $entity) {
+      $wrapper = entity_metadata_wrapper($entity_type, $entity);
+      $uuid = $wrapper->field_uuid->value();
+      $id = $wrapper->getIdentifier();
+
+      $data['delete'][$entity_type][$uuid] = $id;
+
+      // Remove it from the "insert" if it was there.
+      unset($data['insert'][$entity_type][$uuid]);
+    }
+  }
+
+  // Create a new tree.
+  $values = array(
+    'nid' => $branch_id,
+    'data' => $data,
+    'parent_tid' => $parent_tree ? $parent_tree->tid : NULL,
+    'created' => time(),
+  );
+  $tree = entity_create('tree', $values);
+  $tree->save();
+  return $tree;
+}
+
+/**
+ * Implements hook_node_update().
+ *
+ * Safe guard against updating group content nodes.
+ */
+function zariz_rc_node_update($node) {
+  if (!og_is_group_content_type('node', $node->type)) {
+    // Not a group content.
+    return;
+  }
+
+  if (!empty($node->_allow_save)) {
+    // Allow forcing update (e.g. when updating the git hash).
+    return;
+  }
+
+  throw new Exception(format_string('Node @title cannot be updated -  a new node should have been created instead.', array('@title' => $node->title)));
+}
+
+/**
+ * Implements hook_node_delete().
+ *
+ * Safe guard against deleting any node.
+ */
+function zariz_rc_node_delete($node) {
+  throw new Exception('It is illegal to delete a node.');
+}
+
+/**
+ * Implements hook_clone_node_alter().
+ *
+ * Preserve the original node title on clone, and set the branch by context.
+ */
+function zariz_rc_clone_node_alter($node, $context) {
+  if ($context['method'] != 'prepopulate') {
+    return;
+  }
+
+  if (!$og_context = og_context()) {
+    // Safe guard against a failure of PURL to redirect to a group.
+    // @todo: Check if this can really happen.
+    throw new Exception('Cloning content should be inside a branch context.');
+  }
+
+
+  // Use the original node title.
+  $node->title = $context['original_node']->title;
+
+  // Check the context is a child of the existing branch.
+  $wrapper = entity_metadata_wrapper('node', $node);
+  $new_branch_wrapper = entity_metadata_wrapper('node', $og_context['gid']);
+
+  if ($wrapper->{OG_AUDIENCE_FIELD}->getIdentifier() == $og_context['gid']) {
+    // We are cloning inside the same branch, which is the only way to update
+    // an existing node.
+    return;
+  }
+
+  if ($new_branch_wrapper->field_branch->getIdentifier() != $wrapper->{OG_AUDIENCE_FIELD}->getIdentifier()) {
+    $params = array(
+      '@origin' => $wrapper->{OG_AUDIENCE_FIELD}->label(),
+      '@destination' => $new_branch_wrapper->label(),
+    );
+    throw new Exception(format_string('Cannot clone content from branch @origin to @destination as it was not branched from it.', $params));
+  }
+
+  // Set the group audience field according to the existing context. Like this
+  // we allow "cherry-picking" content from branch to branch.
+  $wrapper->{OG_AUDIENCE_FIELD}->set($og_context['gid']);
+}
+
+
+/**
+ * Get all nodes of a branch, even if they are not directly in the group.
+ *
+ * We query for the branch, and the parent branches.
+ *
+ * @param $branch_nid
+ *   A branch node ID. If NULL, OG-context will be triggered to get the current
+ *   branch.
+ */
+function gznt_rn_get_branch_nodes($branch_nid = NULL) {
+  if (!$branch_nid && !$og_context = og_context()) {
+    throw new Exception('No branch node found to limit the entity field query.');
+  }
+  $args = array(
+    ':gids' => zariz_rc_get_branch_parents_ids($branch_nid),
+  );
+
+  $query = '';
+  $query .= "SELECT n.nid, n.title, field_uuid.field_uuid_value FROM (select * from node ORDER BY nid DESC) as n ";
+  $query .= "INNER JOIN {field_data_field_uuid} field_uuid ON field_uuid.entity_id = n.nid ";
+  $query .= "INNER JOIN {og_membership} ogm ON ogm.etid = n.nid ";
+  $query .= "WHERE field_uuid.entity_type = 'node' ";
+
+  if ($deleted_nids = zariz_rc_get_deleted_node_ids($branch_nid)) {
+    $args[':deleted'] = $deleted_nids;
+    $query.= "AND n.nid NOT IN (:deleted) ";
+  }
+
+  $query .= "AND ogm.entity_type = 'node' ";
+  $query .= "AND ogm.gid IN (:gids) ";
+  $query .= "GROUP BY field_uuid.field_uuid_value ";
+  $query .= "ORDER BY n.title ASC ";
+
+  $result = db_query($query, $args)
+    ->fetchAllAssoc('nid');
+
+  return $result;
+}
+
+
+/**
+ * Implements hook_query_branch_context_alter().
+ *
+ * @see \SelectQuery::__toString
+ */
+function zariz_rc_query_branch_context_alter(QueryAlterableInterface $query) {
+  if (!$query->hasTag('branch_context')) {
+    return;
+  }
+
+  if (!$og_context = og_context()) {
+    return;
+  }
+
+  if ($og_context['group_type'] != 'node') {
+    return;
+  }
+
+  $branch_nid = $og_context['gid'];
+  $wrapper = entity_metadata_wrapper('node', $branch_nid);
+  $gids = zariz_rc_get_branch_parents_ids($branch_nid);
+
+  $tables = &$query->getTables();
+
+  // Change "FROM" value.
+  $form_query = db_select('node', 'n');
+  $form_query
+    ->fields('n')
+    ->orderBy('n.nid', 'DESC');
+
+  $tables['node']['table'] = $form_query;
+
+  // @todo: Remove alias harcoding.
+  // @todo: Remove field table hardcoding.
+  $query->innerJoin('field_data_field_uuid', 'field_uuid', 'field_uuid.entity_id = node.nid');
+
+  $query
+    ->condition('field_uuid.entity_type', 'node')
+    ->groupBy('field_uuid.field_uuid_value');
+
+
+  $query->innerJoin('og_membership', 'ogm', 'ogm.etid = node.nid');
+  $query
+    ->condition('ogm.entity_type', 'node')
+    ->condition('ogm.gid', $gids, 'IN');
+
+  if ($deleted_nids = zariz_rc_get_deleted_node_ids($branch_nid)) {
+    $query->condition('node.nid', $deleted_nids, 'NOT IN');
+  }
+
+  // Show only up until the last node the branch knows if, if the value exists.
+  if ($last_nid = $wrapper->field_last_node->getIdentifier()) {
+    $query->condition('node.nid', $last_nid, '<=');
+  }
+}

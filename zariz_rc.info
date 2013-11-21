@@ -1,0 +1,8 @@
+name = Content Revision Control.
+description = Content Revision Control.
+core = 7.x
+
+files[] = includes/zariz_rc.tree.inc
+
+; Tests
+files[] = tests/zariz_rc.tree.test

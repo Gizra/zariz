@@ -1,0 +1,53 @@
+<?php
+
+/**
+ * @file
+ * Contains GzntRmTreeTestCase
+ */
+
+class ZarizRcTreeTestCase extends DrupalWebTestCase {
+
+  public static function getInfo() {
+    return array(
+      'name' => 'Tree',
+      'description' => 'Test the Tree API.',
+      'group' => 'Gezunt',
+    );
+  }
+
+  function setUp() {
+    parent::setUp('zariz_rc');
+  }
+
+  /**
+   * Test tree creation on a single branch.
+   */
+  function testCreateTreeOnBranchWithoutTrees() {
+    $branch_node = zariz_rc_create_branch('master');
+    $branch_id = $branch_node->nid;
+
+    // Add a group content.
+    $values = array(
+      'type' => 'article',
+      'title' => $this->randomName(),
+      OG_AUDIENCE_FIELD . '[und][0][target_id]' => $branch_id,
+    );
+    $node = $this->drupalCreateNode($values);
+    debug($node->{OG_AUDIENCE_FIELD});
+
+    // Get the tree that was created.
+    $tree1 = zariz_rc_get_latest_tree($branch_id);
+    debug($tree1);
+
+    // Add another group content.
+    $node = $this->drupalCreateNode($values);
+
+    // Get the new tree that was created.
+    $tree2 = zariz_rc_get_latest_tree($branch_id);
+    debug($tree2);
+
+    // Assert new references parent tree.
+    $this->assertEqual($tree2->parent_tid, $tree2->tid, 'New tree references parent tree.');
+  }
+
+}

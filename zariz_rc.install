@@ -1,0 +1,50 @@
+<?php
+
+/**
+ * @file
+ * Install, update, and uninstall functions for the Gezunt Release manager
+ * module.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function zariz_rc_schema() {
+  $schema['zariz_rc_tree'] = array(
+    'description' => 'An instance of a Tree.',
+    'fields' => array(
+      'tid' => array(
+        'description' => 'Primary Key: Unique ID.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+      ),
+      'nid' => array(
+        'description' => "The branch node ID.",
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'parent_tid' => array(
+        'description' => "The tree ID of the previous tree.",
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+      ),
+      'created' => array(
+        'description' => 'Timestamp for when the snapshot was created.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+      ),
+      'data' => array(
+        'description' => 'Serialized array for the tree.',
+        'type' => 'text',
+        'serialize' => TRUE,
+      ),
+    ),
+    'primary key' => array('tid'),
+  );
+
+  return $schema;
+}
