@@ -2,6 +2,8 @@ name = Content Revision Control.
 description = Content Revision Control.
 core = 7.x
 
+dependencies[] = og
+
 files[] = includes/zariz.tree.inc
 
 ; Tests
