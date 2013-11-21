@@ -11,7 +11,7 @@ class ZarizTreeTestCase extends DrupalWebTestCase {
     return array(
       'name' => 'Tree',
       'description' => 'Test the Tree API.',
-      'group' => 'Gezunt',
+      'group' => 'Zariz',
     );
   }
 
@@ -19,7 +19,7 @@ class ZarizTreeTestCase extends DrupalWebTestCase {
     parent::setUp('zariz');
     $og_field = og_fields_info(OG_AUDIENCE_FIELD);
     $og_field['field']['cardinality'] = 1;
-    og_create_field(OG_ACCESS_FIELD, 'node', 'article', $og_field);
+    og_create_field(OG_AUDIENCE_FIELD, 'node', 'article', $og_field);
   }
 
   /**
