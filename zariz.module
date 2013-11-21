@@ -528,8 +528,11 @@ function zariz_node_info() {
   return array(
     'branch' => array(
       'name' => t('Branch'),
-      'base' => 'branch',
+      'description' => t('Branch with content.'),
+      'base' => 'node_content',
       'title_label' => t('Name'),
-    )
+      'has_title' => TRUE,
+      'locked' => TRUE,
+    ),
   );
 }
