@@ -17,6 +17,9 @@ class ZarizTreeTestCase extends DrupalWebTestCase {
 
   function setUp() {
     parent::setUp('zariz');
+    $og_field = og_fields_info(OG_AUDIENCE_FIELD);
+    $og_field['field']['cardinality'] = 1;
+    og_create_field(OG_ACCESS_FIELD, 'node', 'article', $og_field);
   }
 
   /**
