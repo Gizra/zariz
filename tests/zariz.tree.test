@@ -5,7 +5,7 @@
  * Contains GzntRmTreeTestCase
  */
 
-class ZarizRcTreeTestCase extends DrupalWebTestCase {
+class ZarizTreeTestCase extends DrupalWebTestCase {
 
   public static function getInfo() {
     return array(
@@ -16,14 +16,14 @@ class ZarizRcTreeTestCase extends DrupalWebTestCase {
   }
 
   function setUp() {
-    parent::setUp('zariz_rc');
+    parent::setUp('zariz');
   }
 
   /**
    * Test tree creation on a single branch.
    */
   function testCreateTreeOnBranchWithoutTrees() {
-    $branch_node = zariz_rc_create_branch('master');
+    $branch_node = zariz_create_branch('master');
     $branch_id = $branch_node->nid;
 
     // Add a group content.
@@ -36,14 +36,14 @@ class ZarizRcTreeTestCase extends DrupalWebTestCase {
     debug($node->{OG_AUDIENCE_FIELD});
 
     // Get the tree that was created.
-    $tree1 = zariz_rc_get_latest_tree($branch_id);
+    $tree1 = zariz_get_latest_tree($branch_id);
     debug($tree1);
 
     // Add another group content.
     $node = $this->drupalCreateNode($values);
 
     // Get the new tree that was created.
-    $tree2 = zariz_rc_get_latest_tree($branch_id);
+    $tree2 = zariz_get_latest_tree($branch_id);
     debug($tree2);
 
     // Assert new references parent tree.

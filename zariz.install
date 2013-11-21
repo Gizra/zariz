@@ -9,8 +9,8 @@
 /**
  * Implements hook_schema().
  */
-function zariz_rc_schema() {
-  $schema['zariz_rc_tree'] = array(
+function zariz_schema() {
+  $schema['zariz_tree'] = array(
     'description' => 'An instance of a Tree.',
     'fields' => array(
       'tid' => array(
