@@ -518,3 +518,18 @@ function zariz_query_branch_context_alter(QueryAlterableInterface $query) {
     $query->condition('node.nid', $last_nid, '<=');
   }
 }
+
+/**
+ * Implements hook_node_info().
+ *
+ * Declare the Branch content type.
+ */
+function zariz_node_info() {
+  return array(
+    'branch' => array(
+      'name' => t('Branch'),
+      'base' => 'branch',
+      'title_label' => t('Name'),
+    )
+  );
+}
