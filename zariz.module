@@ -185,6 +185,32 @@ function zariz_get_tree_parents_ids($tree_id, $ids = array()) {
 }
 
 /**
+ * Return array with all the content by a tree and its parents.
+ *
+ * @param $tree_id
+ *   The tree ID.
+ * @param $entity_type
+ *   The entity type to return. Defaults to "node".
+ */
+function zariz_get_all_content_by_tree($tree_id, $entity_type = 'node') {
+  $tids  = zariz_get_tree_parents_ids($tree_id);
+
+  $trees = entity_load('tree', $tids);
+
+  $return[$entity_type] = array();
+  foreach (array_flip($trees) as $tree) {
+    $return[$entity_type] = drupal_array_merge_deep($return[$entity_type], $tree[$entity_type]['insert']);
+
+    // Remove deleted items.
+    foreach ($tree[$entity_type]['delete'] as $uuid) {
+      unset($return[$entity_type][$uuid]);
+    }
+  }
+
+  return $return;
+}
+
+/**
  * Get the node IDs of "deleted" nodes, that should be excluded.
  *
  * @param $branch_nid
