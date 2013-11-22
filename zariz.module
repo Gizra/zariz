@@ -373,7 +373,14 @@ function zariz_create_tree($branch_id, $insert = array(), $delete = array()) {
       $uuid = $wrapper->field_uuid->value();
       $id = $wrapper->getIdentifier();
 
-      $data['insert'][$entity_type][$uuid] = $id;
+      $uri = $wrapper->uri();
+
+      // Save the entity, keyed by UUID with the entity ID and the URI as the
+      // value.
+      $data['insert'][$entity_type][$uuid] = array(
+        'id' => $id,
+        'uri' => $uri['path'],
+      );
 
       // Remove it from the "delete" if it was there.
       unset($data['delete'][$entity_type][$uuid]);
