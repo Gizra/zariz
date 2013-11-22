@@ -299,6 +299,13 @@ function zariz_node_insert($node) {
     return;
   }
 
+  if (!empty($node->_skip_create_tree)) {
+    // Node explicetly set to skip tree creation. This can be used by
+    // implementing modules that want for example to create several nodes and
+    // only then create a tree of them.
+    return;
+  }
+
   // Add node to tree.
   $wrapper = entity_metadata_wrapper('node', $node);
   $branch_id = $wrapper->{OG_AUDIENCE_FIELD}->getIdentifier();
