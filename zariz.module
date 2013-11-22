@@ -167,12 +167,11 @@ function zariz_get_branch_parents_ids($branch_nid, $ids = array()) {
  * @param $ids
  *   Array of the parent IDs, used in this recursive function.
  * @return
- *   array with the branch node ID, and it's parents. The top most parent is the
+ *   array with the tree ID, and it's parents. The top most parent is the
  *   last element in the array.
  */
 function zariz_get_tree_parents_ids($tree_id, $ids = array()) {
   $wrapper = entity_metadata_wrapper('tree', $tree_id);
-  $tree = $wrapper->value();
   $ids[] = $tree_id;
 
   if (!$parent_tree = $wrapper->field_tree->value()) {
