@@ -261,17 +261,20 @@ function zariz_node_insert($node) {
  *
  * @param $branch_id
  *   The branch ID.
+ * @param $offset
+ *   The offest from the latest tree. Defaults to 0, which is the latest
+ *   tree created.
  *
  * @return
  *   The Tree entity object, or FALSE.
  *
  */
-function zariz_get_latest_tree($branch_id) {
+function zariz_get_tree_from_branch($branch_id, $offset = 0) {
   $query = new EntityFieldQuery();
   $result = $query
     ->entityCondition('entity_type', 'tree')
     ->propertyCondition('nid', $branch_id)
-    ->range(0, 1)
+    ->range($offset, $offset + 1)
     ->propertyOrderBy('tid', 'DESC')
     ->execute();
 
@@ -299,7 +302,7 @@ function zariz_get_latest_tree($branch_id) {
  *   Returns a Tree entity object.
  */
 function zariz_create_tree($branch_id, $insert = array(), $delete = array()) {
-  if (!$parent_tree = zariz_get_latest_tree($branch_id)) {
+  if (!$parent_tree = zariz_get_tree_from_branch($branch_id)) {
     // Get tree from branch, if exists.
     $wrapper = entity_metadata_wrapper('node', $branch_id);
     $parent_tree = $wrapper->field_tree->value();

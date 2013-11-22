@@ -38,13 +38,13 @@ class ZarizTreeTestCase extends DrupalWebTestCase {
     $node = $this->drupalCreateNode($values);
 
     // Get the tree that was created.
-    $tree1 = zariz_get_latest_tree($branch_id);
+    $tree1 = zariz_get_tree_from_branch($branch_id);
 
     // Add another group content.
     $node = $this->drupalCreateNode($values);
 
     // Get the new tree that was created.
-    $tree2 = zariz_get_latest_tree($branch_id);
+    $tree2 = zariz_get_tree_from_branch($branch_id);
 
     // Assert new references parent tree.
     $this->assertEqual($tree2->parent_tid, $tree1->tid, 'New tree references parent tree.');
