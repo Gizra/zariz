@@ -138,16 +138,24 @@ function zariz_update_content_from_parent_branch($branch_nid) {
  *
  * @param $branch_nid
  *   The branch ID or node.
+ * @param $include_current
+ *   Determines if the current branch should be included. Defaults to TRUE.
  * @param $ids
- *   Array of the parent IDs, used in this recursive function.
+ *   Internal use; Array of the parent IDs, used in this recursive function.
+ *
  * @return
  *   array with the branch node ID, and it's parents. The top most parent is the
  *   last element in the array.
  */
-function zariz_get_branch_parents_ids($branch_nid, $ids = array()) {
+function zariz_get_branch_parents_ids($branch_nid, $include_current = TRUE, $ids = array()) {
   $wrapper = entity_metadata_wrapper('node', $branch_nid);
-  $branch_node = $wrapper->value();
-  $ids[] = $branch_node->nid;
+
+  $ids = array();
+  if (!$ids && $include_current) {
+    $branch_node = $wrapper->value();
+    $ids[] = $branch_node->nid;
+  }
+
 
   if (!$parent_node = $wrapper->field_branch->value()) {
     // We reached the top most parent.
@@ -155,7 +163,7 @@ function zariz_get_branch_parents_ids($branch_nid, $ids = array()) {
   }
 
   // Call function, with the parent node.
-  $ids = zariz_get_branch_parents_ids($parent_node, $ids);
+  $ids = zariz_get_branch_parents_ids($parent_node, $include_current, $ids);
   return $ids;
 }
 
@@ -164,13 +172,41 @@ function zariz_get_branch_parents_ids($branch_nid, $ids = array()) {
  *
  * @param $snapshot_id
  *   The branch ID or node.
- * @param $ids
- *   Array of the parent IDs, used in this recursive function.
+ * @param $strict_snapshot
+ *   Determines if the parent snapshot should be the real parent snapshot, or
+ *   the last snapshot the exists in the Branch. If using the last snapshot then
+ *   the returned values will include content that was inserted or deleted after
+ *   the branch was created. If TRUE, then only the content that was created
+ *   exactly when the branch was created will be show. Defaults to FALSE.
+ *
  * @return
  *   array with the snapshot ID, and it's parents. The top most parent is the
  *   last element in the array.
  */
-function zariz_get_snapshot_parents_ids($snapshot_id, $ids = array()) {
+function zariz_get_snapshot_parents_ids($snapshot_id, $strict_snapshot = FALSE) {
+  if ($strict_snapshot) {
+    return zariz_get_snapshot_parents_ids_strict($snapshot_id);
+  }
+
+  return zariz_get_snapshot_parents_ids_not_strict($snapshot_id);
+}
+
+
+/**
+ * Helper function; Return the snapshot parents in strict mode.
+ *
+ * @param $snapshot_id
+ *   The branch ID or node.
+ * @param $ids
+ *   Internal use. Array of the parent IDs, used in this recursive function.
+ *
+ * @return
+ *   array with the snapshot ID, and it's parents. The top most parent is the
+ *   last element in the array.
+ *
+ * @see zariz_get_snapshot_parents_ids().
+ */
+function zariz_get_snapshot_parents_ids_strict($snapshot_id, $ids = array()) {
   $wrapper = entity_metadata_wrapper('snapshot', $snapshot_id);
   $ids[] = $snapshot_id;
 
@@ -185,25 +221,68 @@ function zariz_get_snapshot_parents_ids($snapshot_id, $ids = array()) {
 }
 
 /**
+ * Helper function; Return the snapshot parents in a non-strict mode.
+ *
+ * @param $snapshot_id
+ *   The branch ID or node.
+ * @param $ids
+ *   Internal use. Array of the parent IDs, used in this recursive function.
+ *
+ * @return
+ *   array with the snapshot ID, and it's parents. The top most parent is the
+ *   last element in the array.
+ *
+ * @see zariz_get_snapshot_parents_ids().
+ */
+function zariz_get_snapshot_parents_ids_not_strict($snapshot_id, $ids = array()) {
+  // Get all the parent branches.
+
+  $ids = array($snapshot_id);
+  $snapshot = entity_load_single('snapshot', $snapshot_id);
+  $branch_ids = zariz_get_branch_parents_ids($snapshot->nid, FALSE);
+
+  foreach ($branch_ids as $branch_id) {
+    if ($snapshot = zariz_get_snapshot_from_branch($branch_id)) {
+      $ids[] = $snapshot->tid;
+    }
+  }
+
+  return $ids;
+}
+
+/**
  * Return array with all the content by a snapshot and its parents.
  *
  * @param $snapshot_id
  *   The snapshot ID.
  * @param $entity_type
  *   The entity type to return. Defaults to "node".
+ * @param $strict_snapshot
+ *   Determines if the parent snapshot should be the real parent snapshot, or
+ *   the last snapshot the exists in the Branch. If using the last snapshot then
+ *   the returned values will include content that was inserted or deleted after
+ *   the branch was created. If TRUE, then only the content that was created
+ *   exactly when the branch was created will be show. Defaults to FALSE.
+ *
+ * @return
+ *   Array keyed with the UUID and array with entity ID and URI as value.
  */
-function zariz_get_all_content_by_snapshot($snapshot_id, $entity_type = 'node') {
-  $tids  = zariz_get_snapshot_parents_ids($snapshot_id);
+function zariz_get_all_content_by_snapshot($snapshot_id, $entity_type = 'node', $strict_snapshot = FALSE) {
+  $tids = zariz_get_snapshot_parents_ids($snapshot_id, $strict_snapshot);
 
   $snapshots = entity_load('snapshot', $tids);
 
   $return[$entity_type] = array();
-  foreach (array_flip($snapshots) as $snapshot) {
-    $return[$entity_type] = drupal_array_merge_deep($return[$entity_type], $snapshot[$entity_type]['insert']);
+  foreach ($snapshots as $snapshot) {
+    if (!empty($snapshot->data['insert'][$entity_type])) {
+      $return[$entity_type] = drupal_array_merge_deep($return[$entity_type], $snapshot->data['insert'][$entity_type]);
+    }
 
-    // Remove deleted items.
-    foreach ($snapshot[$entity_type]['delete'] as $uuid) {
-      unset($return[$entity_type][$uuid]);
+    if (!empty($snapshot->data['delete'][$entity_type])) {
+      // Remove deleted items.
+      foreach ($snapshot->data[$entity_type]['delete'] as $uuid) {
+        unset($return[$entity_type][$uuid]);
+      }
     }
   }
 
