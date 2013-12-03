@@ -355,11 +355,14 @@ function zariz_get_tree_from_branch($branch_id, $offset = 0) {
  *   Array of entities objects to "insert", keyed by entity type.
  * @param $delete
  *   Array of entities objects to "delete", keyed by entity type.
+ * @param $use_existing
+ *   Determines if an existing tree should be used, or a new one created.
+ *   Defaults to TRUE.
  *
  * @return Tree
  *   Returns a Tree entity object.
  */
-function zariz_create_tree($branch_id, $insert = array(), $delete = array()) {
+function zariz_create_tree($branch_id, $insert = array(), $delete = array(), $use_existing = TRUE) {
   if (!$parent_tree = zariz_get_tree_from_branch($branch_id)) {
     // Get tree from branch, if exists.
     $wrapper = entity_metadata_wrapper('node', $branch_id);
