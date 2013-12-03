@@ -2,15 +2,15 @@
 
 /**
  * @file
- * Contains GzntRmTreeTestCase
+ * Contains ZarizSnapshotTestCase
  */
 
-class ZarizTreeTestCase extends DrupalWebTestCase {
+class ZarizSnapshotTestCase extends DrupalWebTestCase {
 
   public static function getInfo() {
     return array(
-      'name' => 'Tree',
-      'description' => 'Test the Tree API.',
+      'name' => 'Snapshot',
+      'description' => 'Test the Snapshot API.',
       'group' => 'Zariz',
     );
   }
@@ -23,9 +23,9 @@ class ZarizTreeTestCase extends DrupalWebTestCase {
   }
 
   /**
-   * Test tree creation on a single branch.
+   * Test snapshot creation on a single branch.
    */
-  function testCreateTreeOnBranchWithoutTrees() {
+  function testCreateSnapshotOnBranchWithoutSnapshots() {
     $branch_node = zariz_create_branch('master');
     $branch_id = $branch_node->nid;
 
@@ -37,17 +37,17 @@ class ZarizTreeTestCase extends DrupalWebTestCase {
     $values[OG_AUDIENCE_FIELD][LANGUAGE_NONE][0]['target_id'] = $branch_id;
     $node = $this->drupalCreateNode($values);
 
-    // Get the tree that was created.
-    $tree1 = zariz_get_tree_from_branch($branch_id);
+    // Get the snapshot that was created.
+    $snapshot1 = zariz_get_snapshot_from_branch($branch_id);
 
     // Add another group content.
     $node = $this->drupalCreateNode($values);
 
-    // Get the new tree that was created.
-    $tree2 = zariz_get_tree_from_branch($branch_id);
+    // Assert this is the same snapshot.
+    $snapshot2 = zariz_get_snapshot_from_branch($branch_id);
 
-    // Assert new references parent tree.
-    $this->assertEqual($tree2->parent_tid, $tree1->tid, 'New tree references parent tree.');
+    // Assert new references parent snapshot.
+    $this->assertEqual($snapshot1->tid, $snapshot2->tid, 'Existing snapshot was used when added content.');
   }
 
 }

@@ -10,8 +10,8 @@
  * Implements hook_schema().
  */
 function zariz_schema() {
-  $schema['zariz_tree'] = array(
-    'description' => 'An instance of a Tree.',
+  $schema['zariz_snapshot'] = array(
+    'description' => 'An instance of a Snapshot.',
     'fields' => array(
       'tid' => array(
         'description' => 'Primary Key: Unique ID.',
@@ -26,7 +26,7 @@ function zariz_schema() {
         'default' => 0,
       ),
       'parent_tid' => array(
-        'description' => "The tree ID of the previous tree.",
+        'description' => "The snapshot ID of the previous snapshot.",
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => FALSE,
@@ -38,7 +38,7 @@ function zariz_schema() {
         'unsigned' => TRUE,
       ),
       'data' => array(
-        'description' => 'Serialized array for the tree.',
+        'description' => 'Serialized array for the snapshot.',
         'type' => 'text',
         'serialize' => TRUE,
       ),
@@ -52,15 +52,15 @@ function zariz_schema() {
 /**
  * Implements hook_install().
  *
- * Add Tree and Branch reference to the Branch content type.
+ * Add Snapshot and Branch reference to the Branch content type.
  */
 function zariz_install() {
   og_create_field(OG_GROUP_FIELD, 'node', 'branch');
 
   $info = array(
-    'field_tree' => array(
-      'label' => 'Tree',
-      'target_type' => 'tree',
+    'field_snapshot' => array(
+      'label' => 'Snapshot',
+      'target_type' => 'snapshot',
       'target_bundles' => array(),
     ),
     'field_branch' => array(

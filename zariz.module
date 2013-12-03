@@ -9,18 +9,18 @@
  * Implements hook_entity_info().
  */
 function zariz_entity_info() {
-  $items['tree'] = array(
-    'label' => t('Tree'),
+  $items['snapshot'] = array(
+    'label' => t('Snapshot'),
     'controller class' => 'EntityAPIController',
-    'entity class' => 'Tree',
-    'base table' => 'zariz_tree',
+    'entity class' => 'Snapshot',
+    'base table' => 'zariz_snapshot',
     'fieldable' => TRUE,
     'entity keys' => array(
       'id' => 'tid',
     ),
     'bundles' => array(
-      'tree' => array(
-        'label' => t('Tree'),
+      'snapshot' => array(
+        'label' => t('Snapshot'),
       ),
     ),
     'view modes' => array(
@@ -76,18 +76,18 @@ function zariz_create_branch($branch_name, $original_branch = FALSE) {
 
     $wrapper->field_branch->set($original_branch);
 
-    // Get the last tree created in the original branch.
+    // Get the last snapshot created in the original branch.
     $query = new EntityFieldQuery();
     $result = $query
-      ->entityCondition('entity_type', 'tree')
+      ->entityCondition('entity_type', 'snapshot')
       ->fieldCondition('nid', $branch_id)
       ->range(0, 1)
       ->propertyOrderBy('tid', 'DESC')
       ->execute();
 
-    if (!empty($result['tree'])) {
-      $tid = key($result['tree']);
-      $wrapper->field_tree->set($tid);
+    if (!empty($result['snapshot'])) {
+      $tid = key($result['snapshot']);
+      $wrapper->field_snapshot->set($tid);
     }
   }
 
@@ -160,49 +160,49 @@ function zariz_get_branch_parents_ids($branch_nid, $ids = array()) {
 }
 
 /**
- * Get the tree IDs of the parents of the tree, including the tree itself.
+ * Get the snapshot IDs of the parents of the snapshot, including the snapshot itself.
  *
- * @param $tree_id
+ * @param $snapshot_id
  *   The branch ID or node.
  * @param $ids
  *   Array of the parent IDs, used in this recursive function.
  * @return
- *   array with the tree ID, and it's parents. The top most parent is the
+ *   array with the snapshot ID, and it's parents. The top most parent is the
  *   last element in the array.
  */
-function zariz_get_tree_parents_ids($tree_id, $ids = array()) {
-  $wrapper = entity_metadata_wrapper('tree', $tree_id);
-  $ids[] = $tree_id;
+function zariz_get_snapshot_parents_ids($snapshot_id, $ids = array()) {
+  $wrapper = entity_metadata_wrapper('snapshot', $snapshot_id);
+  $ids[] = $snapshot_id;
 
-  if (!$parent_tree = $wrapper->field_tree->value()) {
+  if (!$parent_snapshot = $wrapper->field_snapshot->value()) {
     // We reached the top most parent.
     return $ids;
   }
 
-  // Call function, with the parent tree.
-  $ids = zariz_get_tree_parents_ids($parent_tree, $ids);
+  // Call function, with the parent snapshot.
+  $ids = zariz_get_snapshot_parents_ids($parent_snapshot, $ids);
   return $ids;
 }
 
 /**
- * Return array with all the content by a tree and its parents.
+ * Return array with all the content by a snapshot and its parents.
  *
- * @param $tree_id
- *   The tree ID.
+ * @param $snapshot_id
+ *   The snapshot ID.
  * @param $entity_type
  *   The entity type to return. Defaults to "node".
  */
-function zariz_get_all_content_by_tree($tree_id, $entity_type = 'node') {
-  $tids  = zariz_get_tree_parents_ids($tree_id);
+function zariz_get_all_content_by_snapshot($snapshot_id, $entity_type = 'node') {
+  $tids  = zariz_get_snapshot_parents_ids($snapshot_id);
 
-  $trees = entity_load('tree', $tids);
+  $snapshots = entity_load('snapshot', $tids);
 
   $return[$entity_type] = array();
-  foreach (array_flip($trees) as $tree) {
-    $return[$entity_type] = drupal_array_merge_deep($return[$entity_type], $tree[$entity_type]['insert']);
+  foreach (array_flip($snapshots) as $snapshot) {
+    $return[$entity_type] = drupal_array_merge_deep($return[$entity_type], $snapshot[$entity_type]['insert']);
 
     // Remove deleted items.
-    foreach ($tree[$entity_type]['delete'] as $uuid) {
+    foreach ($snapshot[$entity_type]['delete'] as $uuid) {
       unset($return[$entity_type][$uuid]);
     }
   }
@@ -299,53 +299,53 @@ function zariz_node_insert($node) {
     return;
   }
 
-  if (!empty($node->_skip_create_tree)) {
-    // Node explicetly set to skip tree creation. This can be used by
+  if (!empty($node->_skip_create_snapshot)) {
+    // Node explicetly set to skip snapshot creation. This can be used by
     // implementing modules that want for example to create several nodes and
-    // only then create a tree of them.
+    // only then create a snapshot of them.
     return;
   }
 
-  // Add node to tree.
+  // Add node to snapshot.
   $wrapper = entity_metadata_wrapper('node', $node);
   $branch_id = $wrapper->{OG_AUDIENCE_FIELD}->getIdentifier();
 
   $insert = array('node' => array($node));
-  zariz_create_tree($branch_id, $insert);
+  zariz_create_snapshot($branch_id, $insert);
 }
 
 /**
- * Returns the latest tree object of a branch.
+ * Returns the latest snapshot object of a branch.
  *
  * @param $branch_id
  *   The branch ID.
  * @param $offset
- *   The offest from the latest tree. Defaults to 0, which is the latest
- *   tree created.
+ *   The offest from the latest snapshot. Defaults to 0, which is the latest
+ *   snapshot created.
  *
  * @return
- *   The Tree entity object, or FALSE.
+ *   The Snapshot entity object, or FALSE.
  *
  */
-function zariz_get_tree_from_branch($branch_id, $offset = 0) {
+function zariz_get_snapshot_from_branch($branch_id, $offset = 0) {
   $query = new EntityFieldQuery();
   $result = $query
-    ->entityCondition('entity_type', 'tree')
+    ->entityCondition('entity_type', 'snapshot')
     ->propertyCondition('nid', $branch_id)
     ->range($offset, $offset + 1)
     ->propertyOrderBy('tid', 'DESC')
     ->execute();
 
-  if (empty($result['tree'])) {
+  if (empty($result['snapshot'])) {
     return FALSE;
   }
 
-  $tid = key($result['tree']);
-  return entity_load_single('tree', $tid);
+  $tid = key($result['snapshot']);
+  return entity_load_single('snapshot', $tid);
 }
 
 /**
- * Add entity to a Tree entity.
+ * Add or remove entities from a Snapshot entity.
  *
  * This creates a snapshot of the content on a specific "revision".
  *
@@ -356,24 +356,38 @@ function zariz_get_tree_from_branch($branch_id, $offset = 0) {
  * @param $delete
  *   Array of entities objects to "delete", keyed by entity type.
  * @param $use_existing
- *   Determines if an existing tree should be used, or a new one created.
+ *   Determines if an existing snapshot should be used, or a new one created.
  *   Defaults to TRUE.
+ * @param $overwrite
+ *   If $use_existing is set to TRUE, and there is an existing snapshot, then
+ *   the values would be added or removed from the existing values, rather then
+ *   overwriting them.
+ *   Defaults to FALSE.
  *
- * @return Tree
- *   Returns a Tree entity object.
+ * @return Snapshot
+ *   Returns a Snapshot entity object.
  */
-function zariz_create_tree($branch_id, $insert = array(), $delete = array(), $use_existing = TRUE) {
-  if (!$parent_tree = zariz_get_tree_from_branch($branch_id)) {
-    // Get tree from branch, if exists.
+function zariz_create_snapshot($branch_id, $insert = array(), $delete = array(), $use_existing = TRUE, $overwrite = FALSE) {
+  if ($use_existing) {
+    $snapshot = zariz_get_snapshot_from_branch($branch_id);
+    // If we are trying to use an existing snapshot, then the parent should be
+    // retrieved using zariz_get_snapshot_from_branch() with an offset of 1.
+    $offset = 1;
+  }
+  else {
+    $offset = 0;
+  }
+
+  if (!$parent_snapshot = zariz_get_snapshot_from_branch($branch_id, $offset)) {
+    // Get snapshot from branch, if exists.
     $wrapper = entity_metadata_wrapper('node', $branch_id);
-    $parent_tree = $wrapper->field_tree->value();
+    $parent_snapshot = $wrapper->field_snapshot->value();
   }
 
   $data = array();
-  if ($parent_tree && $parent_tree->nid == $branch_id) {
-    // The parent tree is from the same branch. Each branch holds
-    // only the entities that are explicitly saved on that branch.
-    $data = $parent_tree->data;
+  if ($snapshot && !$overwrite) {
+    // Use the existing data.
+    $data = $snapshot->data;
   }
 
   // Prepare the new data.
@@ -383,7 +397,7 @@ function zariz_create_tree($branch_id, $insert = array(), $delete = array(), $us
       $uuid = $wrapper->field_uuid->value();
       $id = $wrapper->getIdentifier();
 
-      $uri = $wrapper->uri();
+      $uri = entity_uri($entity_type, $entity);
 
       // Save the entity, keyed by UUID with the entity ID and the URI as the
       // value.
@@ -410,16 +424,23 @@ function zariz_create_tree($branch_id, $insert = array(), $delete = array(), $us
     }
   }
 
-  // Create a new tree.
-  $values = array(
-    'nid' => $branch_id,
-    'data' => $data,
-    'parent_tid' => $parent_tree ? $parent_tree->tid : NULL,
-    'created' => time(),
-  );
-  $tree = entity_create('tree', $values);
-  $tree->save();
-  return $tree;
+  if (!$snapshot) {
+    // Create a new snapshot.
+    $values = array(
+      'nid' => $branch_id,
+      'data' => $data,
+      'parent_tid' => $parent_snapshot ? $parent_snapshot->tid : NULL,
+      'created' => time(),
+    );
+    $snapshot = entity_create('snapshot', $values);
+  }
+  else {
+    // Update the data of the existing snapshot.
+    $snapshot->data = $data;
+  }
+
+  $snapshot->save();
+  return $snapshot;
 }
 
 /**

@@ -4,7 +4,7 @@ core = 7.x
 
 dependencies[] = og
 
-files[] = includes/zariz.tree.inc
+files[] = includes/zariz.snapshot.inc
 
 ; Tests
-files[] = tests/zariz.tree.test
+files[] = tests/zariz.snapshot.test
