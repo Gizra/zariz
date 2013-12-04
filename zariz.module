@@ -265,25 +265,30 @@ function zariz_get_snapshot_parents_ids_not_strict($snapshot_id, $ids = array())
  *   exactly when the branch was created will be show. Defaults to FALSE.
  *
  * @return
- *   Array keyed with the UUID and array with entity ID and URI as value.
+ *   Array of entity IDs.
  */
 function zariz_get_all_content_by_snapshot($snapshot_id, $entity_type = 'node', $strict_snapshot = FALSE) {
   $tids = zariz_get_snapshot_parents_ids($snapshot_id, $strict_snapshot);
 
   $snapshots = entity_load('snapshot', $tids);
 
-  $return[$entity_type] = array();
+  $return = $values = array();
   foreach ($snapshots as $snapshot) {
     if (!empty($snapshot->data['insert'][$entity_type])) {
-      $return[$entity_type] = drupal_array_merge_deep($return[$entity_type], $snapshot->data['insert'][$entity_type]);
+      $values = drupal_array_merge_deep($values, $snapshot->data['insert'][$entity_type]);
     }
 
     if (!empty($snapshot->data['delete'][$entity_type])) {
       // Remove deleted items.
       foreach ($snapshot->data[$entity_type]['delete'] as $uuid) {
-        unset($return[$entity_type][$uuid]);
+        unset($values[$uuid]);
       }
     }
+  }
+
+  // Iterate over the values, and extract only the entity IDs.
+  foreach ($values as $value) {
+    $return[] = $value['id'];
   }
 
   return $return;
