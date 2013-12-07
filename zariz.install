@@ -13,7 +13,7 @@ function zariz_schema() {
   $schema['zariz_snapshot'] = array(
     'description' => 'An instance of a Snapshot.',
     'fields' => array(
-      'tid' => array(
+      'sid' => array(
         'description' => 'Primary Key: Unique ID.',
         'type' => 'serial',
         'unsigned' => TRUE,
@@ -25,7 +25,7 @@ function zariz_schema() {
         'not null' => TRUE,
         'default' => 0,
       ),
-      'parent_tid' => array(
+      'parent_sid' => array(
         'description' => "The snapshot ID of the previous snapshot.",
         'type' => 'int',
         'unsigned' => TRUE,
@@ -37,13 +37,8 @@ function zariz_schema() {
         'not null' => TRUE,
         'unsigned' => TRUE,
       ),
-      'data' => array(
-        'description' => 'Serialized array for the snapshot.',
-        'type' => 'text',
-        'serialize' => TRUE,
-      ),
     ),
-    'primary key' => array('tid'),
+    'primary key' => array('sid'),
   );
 
   return $schema;
@@ -52,28 +47,51 @@ function zariz_schema() {
 /**
  * Implements hook_install().
  *
- * Add Snapshot and Branch reference to the Branch content type.
+ * Add Zariz related fields.
  */
 function zariz_install() {
   og_create_field(OG_GROUP_FIELD, 'node', 'branch');
 
   $info = array(
+    // Add Snapshot reference to the Branch content type.
     'field_snapshot' => array(
       'label' => 'Snapshot',
       'target_type' => 'snapshot',
       'target_bundles' => array(),
     ),
-    'field_branch' => array(
+    // Add Branch reference to the Branch content type.
+    'field_parent_branch' => array(
       'label' => 'Branch',
       'target_type' => 'node',
       'target_bundles' => array('branch'),
     ),
+    // Add Last node reference to the Snapshot entity.
+    'field_last_node' => array(
+      'label' => 'Last node',
+      'target_type' => 'node',
+      'target_bundles' => array(),
+      'entity_type' => 'snapshot',
+      'bundle' => 'snapshot',
+    ),
+    // Add Last term reference to the Snapshot entity.
+    'field_last_term' => array(
+      'label' => 'Last term',
+      'target_type' => 'taxonomy_term',
+      'target_bundles' => array(),
+      'entity_type' => 'snapshot',
+      'bundle' => 'snapshot',
+    ),
   );
 
   foreach ($info as $field_name => $value) {
+    $value += array(
+      'entity_type' => 'node',
+      'bundle' => 'branch',
+      'cardinality' => 1,
+    );
     if (!field_info_field($field_name)) {
       $field = array(
-        'entity_types' => array('node'),
+        'entity_types' => array($value['entity_type']),
         'settings' => array(
           'handler' => 'base',
           'target_type' => $value['target_type'],
@@ -83,16 +101,16 @@ function zariz_install() {
         ),
         'field_name' => $field_name,
         'type' => 'entityreference',
-        'cardinality' => 1,
+        'cardinality' => $value['cardinality'],
       );
       field_create_field($field);
     }
 
     if (!field_info_instance('node', $field_name, 'branch')) {
       $instance = array(
-        'entity_type' => 'node',
+        'entity_type' => $value['entity_type'],
         'field_name' => $field_name,
-        'bundle' => 'branch',
+        'bundle' => $value['bundle'],
         'label' => $value['label'],
       );
       field_create_instance($instance);

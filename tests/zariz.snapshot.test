@@ -46,7 +46,7 @@ class ZarizSnapshotTestCase extends DrupalWebTestCase {
     $snapshot2 = zariz_get_snapshot_from_branch($branch_id);
 
     // Assert this is the same snapshot.
-    $this->assertEqual($snapshot1->tid, $snapshot2->tid, 'Existing snapshot was used when added content.');
+    $this->assertEqual($snapshot1->sid, $snapshot2->sid, 'Existing snapshot was used when added content.');
 
     // Assert nodes were inserted.
     $nids = array();
