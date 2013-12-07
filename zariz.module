@@ -385,6 +385,10 @@ function zariz_get_page_list_by_snapshot($snapshot_id) {
     $urls[] = drupal_get_path_alias('node/' . $nid);
   }
 
+  // @todo: Invoke hook.
+  // Include the home page.
+  $urls[] = 'index.php';
+
   $return['insert'] = $urls;
   return $return;
 }
