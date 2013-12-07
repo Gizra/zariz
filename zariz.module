@@ -114,44 +114,6 @@ function zariz_create_branch($branch_name, $parent_branch = FALSE) {
 }
 
 /**
- * Include new content from the parent branch.
- *
- * As we do not duplicate content between branches, we simply update the "Last
- * node" field to point to the latest node in the parent branch.
- *
- * @param $branch_nid
- *   The branch node ID or object.
- */
-function zariz_update_content_from_parent_branch($branch_nid) {
-  $wrapper = entity_metadata_wrapper('node', $branch_nid);
-
-  if (!$parent_id = $wrapper->field_parent_branch->getIdentifier()) {
-    // Nothing to update, as the branch has no parent.
-    return;
-  }
-
-  // Get the last node ID.
-  $query = new EntityFieldQuery();
-  $result = $query
-    ->entityCondition('entity_type', 'node')
-    // @todo: Remove hardcoding to article
-    ->entityCondition('bundle', 'article')
-    ->fieldCondition(field_parent_branch, 'target_id', $parent_id)
-    ->range(0, 1)
-    ->propertyOrderBy('nid', 'DESC')
-    ->execute();
-
-  if (empty($result['node'])) {
-    // Parent branch has no content.
-    return;
-  }
-
-  $last_nid = key($result['node']);
-  $wrapper->field_last_node->set($last_nid);
-  $wrapper->save();
-}
-
-/**
  * Get the node IDs of the parents of the branch, including the node itself.
  *
  * @param $branch_nid
