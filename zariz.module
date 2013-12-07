@@ -263,12 +263,12 @@ function zariz_get_snapshot_parents_ids_not_strict($snapshot_id, $ids = array())
  *
  * @see zariz_get_content_by_snapshot()
  */
-function zariz_get_content_by_branch($branch_id, $last_id_field_name = 'field_last_node', $deleted_ids_field_name = 'field_deleted_nodes', $strict_snapshot = FALSE) {
+function zariz_get_content_by_branch($branch_id, $last_id_field_name = 'field_last_node', $strict_snapshot = FALSE) {
   if (!$snapshot = zariz_get_snapshot_from_branch($branch_id)) {
     return;
   }
 
-  return zariz_get_content_by_snapshot($snapshot->sid, $last_id_field_name, $deleted_ids_field_name, $strict_snapshot);
+  return zariz_get_content_by_snapshot($snapshot->sid, $last_id_field_name, $strict_snapshot);
 }
 
 /**
@@ -295,7 +295,7 @@ function zariz_get_content_by_branch($branch_id, $last_id_field_name = 'field_la
  *     value.
  *   - @todo: deleted_ids: array of entity IDs.
  */
-function zariz_get_content_by_snapshot($snapshot_id, $last_id_field_name = 'field_last_node', $deleted_ids_field_name = 'field_deleted_nodes', $strict_snapshot = FALSE) {
+function zariz_get_content_by_snapshot($snapshot_id, $last_id_field_name = 'field_last_node', $strict_snapshot = FALSE) {
   $sids = zariz_get_snapshot_parents_ids($snapshot_id, $strict_snapshot);
 
   $snapshots = entity_load('snapshot', $sids);
@@ -309,6 +309,55 @@ function zariz_get_content_by_snapshot($snapshot_id, $last_id_field_name = 'fiel
     // @todo: Return deleted items.
   }
 
+  return $return;
+}
+
+/**
+ * Get a page list of inserted and deleted items, from a single snapshot.
+ *
+ * @todo: Deal with all entities, not just node.
+ *
+ * @param $snapshot_id
+ *   The snapshot ID.
+ *
+ * @return
+ *   Array keyed by "insert" or "deleted" and the URL as value.
+ */
+function zariz_get_page_list_by_snapshot($snapshot_id) {
+  $snapshot = entity_load_single('snapshot', $snapshot_id);
+  $wrapper = entity_metadata_wrapper('snapshot', $snapshot_id);
+
+  $branch_id = $snapshot->nid;
+  $last_nid = $wrapper->field_last_node->getIdentifier();
+
+  $query = new EntityFieldQuery();
+  $query
+    ->entityCondition('entity_type', 'node')
+    // @todo: Remove hardcoding to article
+    ->entityCondition('bundle', 'article')
+    ->entityCondition('entity_id', $last_nid, '<=')
+    ->fieldCondition('field_branch', 'target_id', $branch_id);
+
+  // Snapshot has a parent, so don't include its values.
+  if (!empty($snapshot->parent_sid)) {
+    $parent_wrapper = entity_metadata_wrapper('snapshot', $snapshot->parent_sid);
+    $query->entityCondition('entity_id', $parent_wrapper->field_last_node->getIdentifier(), '>');
+  }
+
+  $result = $query->execute();
+
+  $return = array('insert' => array(), 'delete' => array());
+
+  if (empty($result['node'])) {
+    return $return;
+  }
+
+  $urls = array();
+  foreach (array_keys($result['node']) as $nid) {
+    $urls[] = drupal_lookup_path('alias', 'node/' . $nid);
+  }
+
+  $return['insert'] = $urls;
   return $return;
 }
 
