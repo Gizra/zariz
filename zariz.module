@@ -425,6 +425,20 @@ function zariz_node_presave($node) {
     return;
   }
 
+  if ($node->type == 'branch' && $master_nid = variable_get('zariz_master_branch')) {
+    // There can be only a single "master" branch.
+    $wrapper = entity_metadata_wrapper('node', $node);
+    if (!$wrapper->field_parent_branch->value()) {
+      $master_node = node_load($master_nid);
+      $params = array(
+        '@title' => $node->title,
+        '@master' => $master_node->title,
+      );
+      throw new Exception(format_string('Branch @title cannot be a "master" branch, as @master already exists.', $params));
+    }
+
+  }
+
   if (!og_is_group_content_type('node', $node->type)) {
     return;
   }
@@ -443,6 +457,9 @@ function zariz_node_presave($node) {
  * Add node to branch's flag.
  */
 function zariz_node_insert($node) {
+  if ($node->type == 'branch' && !variable_get('zariz_master_branch')) {
+    return variable_set('zariz_master_branch', $node->nid);
+  }
   if (!og_is_group_content_type('node', $node->type)) {
     // Not a group content.
     return;

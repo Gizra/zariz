@@ -48,6 +48,5 @@ class ZarizSnapshotTestCase extends DrupalWebTestCase {
     // Assert this is the same snapshot.
     $this->assertEqual($snapshot1->sid, $snapshot2->sid, 'Existing snapshot was used when added content.');
     $this->assertEqual($node2->nid, $snapshot1->field_last_node[LANGUAGE_NONE][0]['target_id'], 'Last node ID updated on Snapshot.');
-
   }
 }

@@ -117,3 +117,10 @@ function zariz_install() {
     }
   }
 }
+
+/**
+ * Implements hook_uninstall().
+ */
+function zariz_uninstall() {
+  variable_del('zariz_master_branch');
+}
