@@ -75,7 +75,7 @@ function zariz_create_branch($branch_name, $parent_branch = FALSE) {
     ->execute();
 
   if ($result) {
-    throw new Exception(format_string('Branch @name already exists', array('@name' => $branch_name)));
+    throw new Exception(format_string('Branch @name already exists.', array('@name' => $branch_name)));
   }
 
   $values = array(
@@ -669,8 +669,8 @@ function gznt_rn_get_branch_nodes($branch_nid = NULL) {
  *
  * @see \SelectQuery::__toString
  */
-function zariz_query_branch_context_alter(QueryAlterableInterface $query) {
-  if (!$query->hasTag('branch_context')) {
+function zariz_query_zariz_alter(QueryAlterableInterface $query) {
+  if (!$query->hasTag('zariz')) {
     return;
   }
 
@@ -685,7 +685,7 @@ function zariz_query_branch_context_alter(QueryAlterableInterface $query) {
   $branch_nid = $og_context['gid'];
   $wrapper = entity_metadata_wrapper('node', $branch_nid);
   $gids = zariz_get_branch_parents_ids($branch_nid);
-
+  
   $tables = &$query->getTables();
 
   // Change "FROM" value.
@@ -709,10 +709,6 @@ function zariz_query_branch_context_alter(QueryAlterableInterface $query) {
   $query
     ->condition('ogm.entity_type', 'node')
     ->condition('ogm.gid', $gids, 'IN');
-
-  if ($deleted_nids = zariz_get_deleted_node_ids($branch_nid)) {
-    $query->condition('node.nid', $deleted_nids, 'NOT IN');
-  }
 
   // Show only up until the last node the branch knows if, if the value exists.
   if ($last_nid = $wrapper->field_last_node->getIdentifier()) {
