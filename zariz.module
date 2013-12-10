@@ -241,14 +241,14 @@ function zariz_get_snapshot_parents_ids_not_strict($snapshot_id, $ids = array())
  *     value.
  *   - deleted_ids: array of entity IDs.
  *
- * @see zariz_get_content_by_snapshot()
+ * @see zariz_get_content_by_snapshot(zariz_get_last_entity_ids_by_snapshot
  */
 function zariz_get_content_by_branch($branch_id, $last_id_field_name = 'field_last_node', $strict_snapshot = FALSE) {
   if (!$snapshot = zariz_get_snapshot_from_branch($branch_id)) {
     return;
   }
 
-  return zariz_get_content_by_snapshot($snapshot->sid, $last_id_field_name, $strict_snapshot);
+  return zariz_get_last_entity_ids_by_snapshot($snapshot->sid, $last_id_field_name, $strict_snapshot);
 }
 
 /**
@@ -275,7 +275,7 @@ function zariz_get_content_by_branch($branch_id, $last_id_field_name = 'field_la
  *     value.
  *   - @todo: deleted_ids: array of entity IDs.
  */
-function zariz_get_content_by_snapshot($snapshot_id, $last_id_field_name = 'field_last_node', $strict_snapshot = FALSE) {
+function zariz_get_last_entity_ids_by_snapshot($snapshot_id, $last_id_field_name = 'field_last_node', $strict_snapshot = FALSE) {
   $sids = zariz_get_snapshot_parents_ids($snapshot_id, $strict_snapshot);
 
   $snapshots = entity_load('snapshot', $sids);
@@ -674,7 +674,9 @@ function zariz_query_zariz_alter(QueryAlterableInterface $query) {
     return;
   }
 
-  if (!$og_context = og_context()) {
+  // @todo: Get snapshot ID from query metadata.
+
+  if (!module_exists('og_context') || !$og_context = og_context()) {
     return;
   }
 
@@ -684,36 +686,41 @@ function zariz_query_zariz_alter(QueryAlterableInterface $query) {
 
   $branch_nid = $og_context['gid'];
   $wrapper = entity_metadata_wrapper('node', $branch_nid);
-  $gids = zariz_get_branch_parents_ids($branch_nid);
-  
+  $snapshot = zariz_get_snapshot_from_branch($branch_nid);
+
   $tables = &$query->getTables();
 
   // Change "FROM" value.
-  $form_query = db_select('node', 'n');
-  $form_query
+  $from_query = db_select('node', 'n');
+  $from_query
     ->fields('n')
     ->orderBy('n.nid', 'DESC');
 
-  $tables['node']['table'] = $form_query;
+  $tables['node']['table'] = $from_query;
+
+  // Get the content up to the last entity ID of that branch.
+  $query->innerJoin('og_membership', 'ogm', 'ogm.esid = node.nid');
+
+  // WHERE (ogm.gid = :gid1 AND n.last_node = :nid1) OR (ogm.gid = :gid2 AND n.last_node = :nid2)
+  $nids = zariz_get_last_entity_ids_by_snapshot($snapshot->sid);
+
+  foreach ($nids['last_ids'] as $gid => $last_id) {
+    $or = db_or();
+    $or->condition('ogm.gid', $gid);
+
+    $and = db_and();
+    // @todo: Remove hardcoding of the "nid".
+    $and->condition('n.nid', $last_id, '<=');
+    $or->condition($and);
+    $query->condition($or);
+  }
 
   // @todo: Remove alias harcoding.
   // @todo: Remove field table hardcoding.
   $query->innerJoin('field_data_field_uuid', 'field_uuid', 'field_uuid.entity_id = node.nid');
-
   $query
     ->condition('field_uuid.entity_type', 'node')
     ->groupBy('field_uuid.field_uuid_value');
-
-
-  $query->innerJoin('og_membership', 'ogm', 'ogm.esid = node.nid');
-  $query
-    ->condition('ogm.entity_type', 'node')
-    ->condition('ogm.gid', $gids, 'IN');
-
-  // Show only up until the last node the branch knows if, if the value exists.
-  if ($last_nid = $wrapper->field_last_node->getIdentifier()) {
-    $query->condition('node.nid', $last_nid, '<=');
-  }
 }
 
 /**
