@@ -687,7 +687,17 @@ function zariz_query_zariz_alter(QueryAlterableInterface $query) {
   $branch_nid = $og_context['gid'];
   $snapshot = zariz_get_snapshot_from_branch($branch_nid);
 
-  $tables = &$query->getTables();
+
+  foreach ($query->getTables()as $alias => $info) {
+    if ($info['table'] == 'node') {
+      $node_alias = $alias;
+      break;
+    }
+  }
+
+  if (!$node_alias) {
+    return;
+  }
 
   // Get the content up to the last entity ID of that branch.
   $query->innerJoin('og_membership', 'ogm', 'ogm.etid = n.nid');
@@ -699,7 +709,7 @@ function zariz_query_zariz_alter(QueryAlterableInterface $query) {
   foreach ($nids['last_ids'] as $gid => $last_id) {
     $db_and = db_and();
     $db_and->condition('ogm.gid', $gid);
-    $db_and->condition('n.nid', $last_id, '<=');
+    $db_and->condition("$node_alias.nid", $last_id, '<=');
     $db_or->condition($db_and);
   }
 
@@ -707,7 +717,7 @@ function zariz_query_zariz_alter(QueryAlterableInterface $query) {
 
   // @todo: Remove alias harcoding.
   // @todo: Remove field table hardcoding.
-  $query->innerJoin('field_data_field_uuid', 'field_uuid', 'field_uuid.entity_id = n.nid');
+  $query->innerJoin('field_data_field_uuid', 'field_uuid', "field_uuid.entity_id = $node_alias.nid");
   $query
     ->condition('field_uuid.entity_type', 'node')
     ->groupBy('field_uuid.field_uuid_value');
