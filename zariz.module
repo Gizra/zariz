@@ -685,39 +685,29 @@ function zariz_query_zariz_alter(QueryAlterableInterface $query) {
   }
 
   $branch_nid = $og_context['gid'];
-  $wrapper = entity_metadata_wrapper('node', $branch_nid);
   $snapshot = zariz_get_snapshot_from_branch($branch_nid);
 
   $tables = &$query->getTables();
 
-  // Change "FROM" value.
-  $from_query = db_select('node', 'n');
-  $from_query
-    ->fields('n')
-    ->orderBy('n.nid', 'DESC');
-
-  $tables['node']['table'] = $from_query;
-
   // Get the content up to the last entity ID of that branch.
-  $query->innerJoin('og_membership', 'ogm', 'ogm.esid = node.nid');
+  $query->innerJoin('og_membership', 'ogm', 'ogm.etid = n.nid');
 
-  // WHERE (ogm.gid = :gid1 AND n.last_node = :nid1) OR (ogm.gid = :gid2 AND n.last_node = :nid2)
   $nids = zariz_get_last_entity_ids_by_snapshot($snapshot->sid);
 
+  // WHERE (ogm.gid = :gid1 AND n.last_node = :nid1) OR (ogm.gid = :gid2 AND n.last_node = :nid2)
+  $db_or = db_or();
   foreach ($nids['last_ids'] as $gid => $last_id) {
-    $or = db_or();
-    $or->condition('ogm.gid', $gid);
-
-    $and = db_and();
-    // @todo: Remove hardcoding of the "nid".
-    $and->condition('n.nid', $last_id, '<=');
-    $or->condition($and);
-    $query->condition($or);
+    $db_and = db_and();
+    $db_and->condition('ogm.gid', $gid);
+    $db_and->condition('n.nid', $last_id, '<=');
+    $db_or->condition($db_and);
   }
+
+  $query->condition($db_or);
 
   // @todo: Remove alias harcoding.
   // @todo: Remove field table hardcoding.
-  $query->innerJoin('field_data_field_uuid', 'field_uuid', 'field_uuid.entity_id = node.nid');
+  $query->innerJoin('field_data_field_uuid', 'field_uuid', 'field_uuid.entity_id = n.nid');
   $query
     ->condition('field_uuid.entity_type', 'node')
     ->groupBy('field_uuid.field_uuid_value');
