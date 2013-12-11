@@ -61,8 +61,14 @@ function zariz_entity_info() {
  *   The branch name.
  * @param $parent_branch
  *   Optional; The node ID or object of the original branch.
+ * @param $parent_snapshot
+ *   Optioanl; The snapshot ID or object from the original branch. This will be
+ *   used only if $parent_branch is set.
+ *
+ * @return
+ *   The branch node object.
  */
-function zariz_create_branch($branch_name, $parent_branch = FALSE) {
+function zariz_create_branch($branch_name, $parent_branch = NULL, $parent_snapshot = NULL) {
   global $user;
 
   // Check branch doesn't exist already.
@@ -89,27 +95,17 @@ function zariz_create_branch($branch_name, $parent_branch = FALSE) {
   $wrapper->{OG_GROUP_FIELD}->set(TRUE);
 
   if ($parent_branch) {
-    $branch_wrapper = entity_metadata_wrapper('node', $parent_branch);
-    $branch_id = $branch_wrapper->getIdentifier();
-
     $wrapper->field_parent_branch->set($parent_branch);
+    $parent_snapshot = $parent_snapshot ? $parent_snapshot : zariz_get_snapshot_from_branch($parent_branch->nid);
 
-    // Get the last snapshot created in the original branch.
-    $query = new EntityFieldQuery();
-    $result = $query
-      ->entityCondition('entity_type', 'snapshot')
-      ->fieldCondition('nid', $branch_id)
-      ->range(0, 1)
-      ->propertyOrderBy('sid', 'DESC')
-      ->execute();
-
-    if (!empty($result['snapshot'])) {
-      $sid = key($result['snapshot']);
-      $wrapper->field_snapshot->set($sid);
-    }
   }
 
-  $wrapper->save();
+  $node = $wrapper->save();
+
+  // Create a new Snapshot.
+  $snapshot = zariz_get_snapshot_from_branch($node->nid, TRUE, 0, $parent_snapshot);
+  $snapshot->save();
+
   return $wrapper->value();
 }
 
@@ -514,13 +510,16 @@ function zariz_snapshot_set_last_entity_id($branch_id, $id, $field_name = 'field
  * @param $offset
  *   The offest from the latest snapshot. Defaults to 0, which is the latest
  *   snapshot created.
+ *  * @param $parent_snapshot
+ *   Optioanl; The parent snapshot object. If not set, function will try to get
+ *   a previous parent from same branch.
  *
  * @return
  *   The Snapshot entity object if found, or un-unsaved Snapshot entity if non
  *   found and $create set to TRUE, or NULL.
  *
  */
-function zariz_get_snapshot_from_branch($branch_id, $create = FALSE, $offset = 0) {
+function zariz_get_snapshot_from_branch($branch_id, $create = FALSE, $offset = 0, $parent_snapshot = NULL) {
   $query = new EntityFieldQuery();
   $result = $query
     ->entityCondition('entity_type', 'snapshot')
@@ -538,7 +537,7 @@ function zariz_get_snapshot_from_branch($branch_id, $create = FALSE, $offset = 0
       throw new Exception('Offset value should be 0, when calling zariz_get_snapshot_from_branch() with $create set to TRUE.');
     }
 
-    $parent_snapshot = zariz_get_snapshot_from_branch($branch_id, FALSE, 1);
+    $parent_snapshot = $parent_snapshot ? $parent_snapshot : zariz_get_snapshot_from_branch($branch_id, FALSE, 1);
 
     $values = array(
       'nid' => $branch_id,
