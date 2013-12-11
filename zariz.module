@@ -60,9 +60,15 @@ function zariz_entity_info() {
  * @param $branch_name
  *   The branch name.
  * @param $parent_branch
- *   Optional; The node ID or object of the original branch.
+ *   Optional; The node object of the parent branch.
+ * @param $parent_snapshot
+ *   Optioanl; The snapshot object from the original branch. This will be
+ *   used only if $parent_branch is set.
+ *
+ * @return
+ *   The branch node object.
  */
-function zariz_create_branch($branch_name, $parent_branch = FALSE) {
+function zariz_create_branch($branch_name, $parent_branch = NULL, $parent_snapshot = NULL) {
   global $user;
 
   // Check branch doesn't exist already.
@@ -75,7 +81,7 @@ function zariz_create_branch($branch_name, $parent_branch = FALSE) {
     ->execute();
 
   if ($result) {
-    throw new Exception(format_string('Branch @name already exists', array('@name' => $branch_name)));
+    throw new Exception(format_string('Branch @name already exists.', array('@name' => $branch_name)));
   }
 
   $values = array(
@@ -89,28 +95,18 @@ function zariz_create_branch($branch_name, $parent_branch = FALSE) {
   $wrapper->{OG_GROUP_FIELD}->set(TRUE);
 
   if ($parent_branch) {
-    $branch_wrapper = entity_metadata_wrapper('node', $parent_branch);
-    $branch_id = $branch_wrapper->getIdentifier();
-
     $wrapper->field_parent_branch->set($parent_branch);
-
-    // Get the last snapshot created in the original branch.
-    $query = new EntityFieldQuery();
-    $result = $query
-      ->entityCondition('entity_type', 'snapshot')
-      ->fieldCondition('nid', $branch_id)
-      ->range(0, 1)
-      ->propertyOrderBy('sid', 'DESC')
-      ->execute();
-
-    if (!empty($result['snapshot'])) {
-      $sid = key($result['snapshot']);
-      $wrapper->field_snapshot->set($sid);
-    }
+    $parent_snapshot = $parent_snapshot ? $parent_snapshot : zariz_get_snapshot_from_branch($parent_branch->nid);
   }
 
   $wrapper->save();
-  return $wrapper->value();
+  $node = $wrapper->value();
+
+  // Create a new Snapshot.
+  $snapshot = zariz_get_snapshot_from_branch($node->nid, TRUE, 0, $parent_snapshot);
+  $snapshot->save();
+
+  return $node;
 }
 
 /**
@@ -143,7 +139,7 @@ function zariz_get_branch_parents_ids($branch_nid, $include_current = TRUE, $ids
   }
 
   // Call function, with the parent node.
-  $ids = zariz_get_branch_parents_ids($parent_node, $include_current, $ids);
+  $ids = zariz_get_branch_parents_ids($parent_node, TRUE, $ids);
   return $ids;
 }
 
@@ -241,14 +237,14 @@ function zariz_get_snapshot_parents_ids_not_strict($snapshot_id, $ids = array())
  *     value.
  *   - deleted_ids: array of entity IDs.
  *
- * @see zariz_get_content_by_snapshot()
+ * @see zariz_get_content_by_snapshot(zariz_get_last_entity_ids_by_snapshot
  */
 function zariz_get_content_by_branch($branch_id, $last_id_field_name = 'field_last_node', $strict_snapshot = FALSE) {
   if (!$snapshot = zariz_get_snapshot_from_branch($branch_id)) {
     return;
   }
 
-  return zariz_get_content_by_snapshot($snapshot->sid, $last_id_field_name, $strict_snapshot);
+  return zariz_get_last_entity_ids_by_snapshot($snapshot->sid, $last_id_field_name, $strict_snapshot);
 }
 
 /**
@@ -275,7 +271,7 @@ function zariz_get_content_by_branch($branch_id, $last_id_field_name = 'field_la
  *     value.
  *   - @todo: deleted_ids: array of entity IDs.
  */
-function zariz_get_content_by_snapshot($snapshot_id, $last_id_field_name = 'field_last_node', $strict_snapshot = FALSE) {
+function zariz_get_last_entity_ids_by_snapshot($snapshot_id, $last_id_field_name = 'field_last_node', $strict_snapshot = FALSE) {
   $sids = zariz_get_snapshot_parents_ids($snapshot_id, $strict_snapshot);
 
   $snapshots = entity_load('snapshot', $sids);
@@ -514,13 +510,16 @@ function zariz_snapshot_set_last_entity_id($branch_id, $id, $field_name = 'field
  * @param $offset
  *   The offest from the latest snapshot. Defaults to 0, which is the latest
  *   snapshot created.
+ *  * @param $parent_snapshot
+ *   Optioanl; The parent snapshot object. If not set, function will try to get
+ *   a previous parent from same branch.
  *
  * @return
  *   The Snapshot entity object if found, or un-unsaved Snapshot entity if non
  *   found and $create set to TRUE, or NULL.
  *
  */
-function zariz_get_snapshot_from_branch($branch_id, $create = FALSE, $offset = 0) {
+function zariz_get_snapshot_from_branch($branch_id, $create = FALSE, $offset = 0, $parent_snapshot = NULL) {
   $query = new EntityFieldQuery();
   $result = $query
     ->entityCondition('entity_type', 'snapshot')
@@ -538,7 +537,7 @@ function zariz_get_snapshot_from_branch($branch_id, $create = FALSE, $offset = 0
       throw new Exception('Offset value should be 0, when calling zariz_get_snapshot_from_branch() with $create set to TRUE.');
     }
 
-    $parent_snapshot = zariz_get_snapshot_from_branch($branch_id, FALSE, 1);
+    $parent_snapshot = $parent_snapshot ? $parent_snapshot : zariz_get_snapshot_from_branch($branch_id, FALSE, 1);
 
     $values = array(
       'nid' => $branch_id,
@@ -669,12 +668,14 @@ function gznt_rn_get_branch_nodes($branch_nid = NULL) {
  *
  * @see \SelectQuery::__toString
  */
-function zariz_query_branch_context_alter(QueryAlterableInterface $query) {
-  if (!$query->hasTag('branch_context')) {
+function zariz_query_zariz_alter(QueryAlterableInterface $query) {
+  if (!$query->hasTag('zariz')) {
     return;
   }
 
-  if (!$og_context = og_context()) {
+  // @todo: Get snapshot ID from query metadata.
+
+  if (!module_exists('og_context') || !$og_context = og_context()) {
     return;
   }
 
@@ -683,41 +684,42 @@ function zariz_query_branch_context_alter(QueryAlterableInterface $query) {
   }
 
   $branch_nid = $og_context['gid'];
-  $wrapper = entity_metadata_wrapper('node', $branch_nid);
-  $gids = zariz_get_branch_parents_ids($branch_nid);
+  $snapshot = zariz_get_snapshot_from_branch($branch_nid);
 
-  $tables = &$query->getTables();
+  $tables = $query->getTables();
+  foreach ($tables as $alias => $info) {
+    if ($info['table'] == 'node') {
+      $node_alias = $alias;
+      break;
+    }
+  }
 
-  // Change "FROM" value.
-  $form_query = db_select('node', 'n');
-  $form_query
-    ->fields('n')
-    ->orderBy('n.nid', 'DESC');
+  if (!$node_alias) {
+    return;
+  }
 
-  $tables['node']['table'] = $form_query;
+  // Get the content up to the last entity ID of that branch.
+  $query->innerJoin('og_membership', 'ogm', "ogm.etid = $node_alias.nid");
+
+  $nids = zariz_get_last_entity_ids_by_snapshot($snapshot->sid);
+
+  // WHERE (ogm.gid = :gid1 AND n.last_node = :nid1) OR (ogm.gid = :gid2 AND n.last_node = :nid2)
+  $db_or = db_or();
+  foreach ($nids['last_ids'] as $gid => $last_id) {
+    $db_and = db_and();
+    $db_and->condition('ogm.gid', $gid);
+    $db_and->condition("$node_alias.nid", $last_id, '<=');
+    $db_or->condition($db_and);
+  }
+
+  $query->condition($db_or);
 
   // @todo: Remove alias harcoding.
   // @todo: Remove field table hardcoding.
-  $query->innerJoin('field_data_field_uuid', 'field_uuid', 'field_uuid.entity_id = node.nid');
-
+  $query->innerJoin('field_data_field_uuid', 'field_uuid', "field_uuid.entity_id = $node_alias.nid");
   $query
     ->condition('field_uuid.entity_type', 'node')
     ->groupBy('field_uuid.field_uuid_value');
-
-
-  $query->innerJoin('og_membership', 'ogm', 'ogm.esid = node.nid');
-  $query
-    ->condition('ogm.entity_type', 'node')
-    ->condition('ogm.gid', $gids, 'IN');
-
-  if ($deleted_nids = zariz_get_deleted_node_ids($branch_nid)) {
-    $query->condition('node.nid', $deleted_nids, 'NOT IN');
-  }
-
-  // Show only up until the last node the branch knows if, if the value exists.
-  if ($last_nid = $wrapper->field_last_node->getIdentifier()) {
-    $query->condition('node.nid', $last_nid, '<=');
-  }
 }
 
 /**
