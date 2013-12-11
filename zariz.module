@@ -139,7 +139,7 @@ function zariz_get_branch_parents_ids($branch_nid, $include_current = TRUE, $ids
   }
 
   // Call function, with the parent node.
-  $ids = zariz_get_branch_parents_ids($parent_node, $include_current, $ids);
+  $ids = zariz_get_branch_parents_ids($parent_node, TRUE, $ids);
   return $ids;
 }
 
