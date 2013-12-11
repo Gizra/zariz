@@ -60,9 +60,9 @@ function zariz_entity_info() {
  * @param $branch_name
  *   The branch name.
  * @param $parent_branch
- *   Optional; The node ID or object of the original branch.
+ *   Optional; The node object of the parent branch.
  * @param $parent_snapshot
- *   Optioanl; The snapshot ID or object from the original branch. This will be
+ *   Optioanl; The snapshot object from the original branch. This will be
  *   used only if $parent_branch is set.
  *
  * @return
@@ -97,16 +97,16 @@ function zariz_create_branch($branch_name, $parent_branch = NULL, $parent_snapsh
   if ($parent_branch) {
     $wrapper->field_parent_branch->set($parent_branch);
     $parent_snapshot = $parent_snapshot ? $parent_snapshot : zariz_get_snapshot_from_branch($parent_branch->nid);
-
   }
 
-  $node = $wrapper->save();
+  $wrapper->save();
+  $node = $wrapper->value();
 
   // Create a new Snapshot.
   $snapshot = zariz_get_snapshot_from_branch($node->nid, TRUE, 0, $parent_snapshot);
   $snapshot->save();
 
-  return $wrapper->value();
+  return $node;
 }
 
 /**
