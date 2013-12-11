@@ -687,8 +687,8 @@ function zariz_query_zariz_alter(QueryAlterableInterface $query) {
   $branch_nid = $og_context['gid'];
   $snapshot = zariz_get_snapshot_from_branch($branch_nid);
 
-
-  foreach ($query->getTables()as $alias => $info) {
+  $tables = $query->getTables();
+  foreach ($tables as $alias => $info) {
     if ($info['table'] == 'node') {
       $node_alias = $alias;
       break;
@@ -700,7 +700,7 @@ function zariz_query_zariz_alter(QueryAlterableInterface $query) {
   }
 
   // Get the content up to the last entity ID of that branch.
-  $query->innerJoin('og_membership', 'ogm', 'ogm.etid = n.nid');
+  $query->innerJoin('og_membership', 'ogm', "ogm.etid = $node_alias.nid");
 
   $nids = zariz_get_last_entity_ids_by_snapshot($snapshot->sid);
 
