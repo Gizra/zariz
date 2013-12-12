@@ -25,10 +25,10 @@ before_script:
   - mysql -e 'create database zariz'
   - php -d sendmail_path=`which true` `pear config-get php_dir`/drush/drush.php --yes core-quick-drupal --profile=testing --no-server --db-url=mysql://root:@127.0.0.1/zariz --enable=simpletest zariz
 
-  # reference and enable travis_ci_drupal_module_example in build site
-  - ln -s $(readlink -e $(cd -)) zariz/drupal/sites/all/modules/travis_ci_drupal_module_example
+  # reference and enable zariz in build site
+  - ln -s $(readlink -e $(cd -)) zariz/drupal/sites/all/modules/zariz
   - cd zariz/drupal
-  - drush --yes pm-enable travis_ci_drupal_module_example
+  - drush --yes pm-enable zariz
 
   # start a web server on port 8080, run in the background; wait for initialization
   - drush runserver 127.0.0.1:8080 &
