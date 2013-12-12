@@ -3,9 +3,13 @@ description = Content Revision Control.
 core = 7.x
 
 dependencies[] = og
+dependencies[] = replicate
 
 files[] = includes/zariz.snapshot.inc
 
 ; Tests
+files[] = tests/branch.test
+files[] = tests/merge.test
+files[] = tests/mergeConflicts.test
 files[] = tests/snapshot.test
 files[] = tests/queryAlter.test

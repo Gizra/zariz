@@ -110,6 +110,196 @@ function zariz_create_branch($branch_name, $parent_branch = NULL, $parent_snapsh
 }
 
 /**
+ * Merge the content of a snapshot into another branch.
+ *
+ * We iterate over the content in the "merge from" branch, and clone it into the
+ * the "merge to" branch. Like this we confirm that the new content has higher
+ * entity ID.
+ *
+ * @param $from_branch_id
+ *   The branch node ID.
+ * @param $to_branch_id
+ *   Optional; The other branch node ID to merge to. If empty, the parent
+ *   branch would be used. Defaults to NULL.
+ *
+ * @todo: What to do if there is no content to merge?
+ *
+ * @return Snapshot
+ *   The snapshot entity created in the other branch, or FALSE if there was no
+ *   content to merge.
+ *
+ */
+function zariz_merge_branch($from_branch_id, $to_branch_id = NULL) {
+  $master_nid = variable_get('zariz_master_branch');
+  if (!$to_branch_id && $from_branch_id == $master_nid) {
+    throw new Exception('The master branch has no parent branch to merge into.');
+  }
+
+  if (zariz_get_merge_conflicts($from_branch_id, $to_branch_id)) {
+    throw new Exception('Cannot merge conflicting brances.');
+  }
+
+  // Clone content from "merge from" to "merge to" branch.
+  $query = new EntityFieldQuery();
+  $result = $query
+    ->entityCondition('entity_type', 'node')
+    // @todo: Remove hardcoding to article
+    ->entityCondition('bundle', 'article')
+    ->fieldCondition('field_branch', 'target_id', $from_branch_id)
+    ->propertyOrderBy('nid')
+    ->execute();
+
+  if (empty($result['node'])) {
+    // No content to merge.
+    return;
+  }
+
+  $nids = array_keys($result['node']);
+
+  $wrapper = entity_metadata_wrapper('node', $from_branch_id);
+  $to_branch_id = $to_branch_id ? $to_branch_id : $wrapper->field_branch->getIdentifier();
+
+  // Lock the existing snapshots in both branches.
+  $from_snapshot = zariz_get_snapshot_from_branch($from_branch_id);
+  $from_snapshot->lock();
+
+  $to_snapshot = zariz_get_snapshot_from_branch($to_branch_id);
+  $to_snapshot->lock();
+
+  $nodes = node_load_multiple($nids);
+  foreach ($nodes as $node) {
+    // Replicate the entity, only after we changed the branch it belongs to.
+    $wrapper = entity_metadata_wrapper('node', $node);
+    $wrapper->field_branch->set($to_branch_id);
+    replicate_entity('node', $node);
+  }
+
+  // Lock the new snapshot in the "merge to" branch.
+  $to_snapshot = zariz_get_snapshot_from_branch($to_branch_id);
+  $to_snapshot->lock();
+
+  return $to_snapshot;
+}
+
+/**
+ * Get entities that have a merge conflict.
+ *
+ * A merge conflict can happen when content with same UUID on the "to branch"
+ * was already updated, and the entity ID is higher than the one in the "from
+ * branch".
+ *
+ * @todo: Support non-node entities.
+ *
+ * @param $from_branch_id
+ *   The branch node ID.
+ * @param $to_branch_id
+ *   Optional; The other branch node ID to merge to. If empty, the parent
+ *   branch would be used. Defaults to NULL.
+ * @param $last_id_field_name
+ *   The name of the field that holds the last entity ID. Defaults to
+ *   "field_last_node".
+ *
+ * @return
+ *   Array keyed by the entity ID from the "from branch" and the entity ID from the "to branch" as the
+ *   value.
+ */
+function zariz_get_merge_conflicts($from_branch_id, $to_branch_id = NULL, $last_id_field_name = 'field_last_node') {
+  $from_branch_wrapper = entity_metadata_wrapper('node', $from_branch_id);
+  $to_branch_id = $to_branch_id ? $to_branch_id : $from_branch_wrapper->field_branch->getIdentifier();
+
+  $query = new EntityFieldQuery();
+  $result = $query
+    ->entityCondition('entity_type', 'node')
+    // @todo: Remove hardcoding to article
+    ->entityCondition('bundle', 'article')
+    ->fieldCondition('field_branch', 'target_id', $from_branch_id)
+    ->range(0, 1)
+    ->propertyOrderBy('nid')
+    ->execute();
+
+  if (empty($result['node'])) {
+    // Nothing to merge.
+    return;
+  }
+
+  $first_from_nid = key($result['node']);
+
+  $query = new EntityFieldQuery();
+  $result = $query
+    ->entityCondition('entity_type', 'node')
+    // @todo: Remove hardcoding to article
+    ->entityCondition('bundle', 'article')
+    ->fieldCondition('field_branch', 'target_id', $to_branch_id)
+    ->range(0, 1)
+    ->propertyOrderBy('nid', 'DESC')
+    ->execute();
+
+  if (empty($result['node'])) {
+    // No content in the "to branch".
+    return;
+  }
+
+  $last_to_nid = key($result['node']);
+
+  if ($last_to_nid < $first_from_nid) {
+    // The last entity ID of the "to branch" is lower than the first one in
+    // the "from branch", so no conflict.
+    return;
+  }
+
+  // Get all the UUID from the "from branch".
+  $query = new EntityFieldQuery();
+  $result = $query
+    ->entityCondition('entity_type', 'node')
+    // @todo: Remove hardcoding to article
+    ->entityCondition('bundle', 'article')
+    ->fieldCondition('field_branch', 'target_id', $from_branch_id)
+    ->execute();
+
+  // Array keyed by the UUID.
+  $values = array();
+
+  $nids = array_keys($result['node']);
+  foreach (node_load_multiple($nids) as $node) {
+    $wrapper = entity_metadata_wrapper('node', $node);
+    $uuid = $wrapper->field_uuid->value();
+    $values[$uuid]['from'] = $node->nid;
+  }
+
+  // Get the UUID values of the content from the "to branch" with higher entity
+  // ID then the first content from the "from branch."
+  $all_uuids = array_keys($values);
+  $query = new EntityFieldQuery();
+  $result = $query
+    ->entityCondition('entity_type', 'node')
+    // @todo: Remove hardcoding to article
+    ->entityCondition('bundle', 'article')
+    ->fieldCondition('field_branch', 'target_id', $to_branch_id)
+    ->fieldCondition('field_uuid', 'value', $all_uuids, 'IN')
+    ->propertyCondition('nid', $first_from_nid, '>')
+    ->propertyOrderBy('nid')
+    ->execute();
+
+  if (empty($result['node'])) {
+    // No matching UUIDs found.
+    return;
+  }
+
+  $nids = array_keys($result['node']);
+  foreach (node_load_multiple($nids) as $node) {
+    $wrapper = entity_metadata_wrapper('node', $node);
+    $uuid = $wrapper->field_uuid->value();
+    $nid = $node->nid;
+
+    if ($nid > $values[$uuid]['from']) {
+      $values[$uuid]['to'] = $node->nid;
+    }
+  }
+
+  return !empty($values) ? $values : NULL;
+}
+
+/**
  * Get the node IDs of the parents of the branch, including the node itself.
  *
  * @param $branch_nid
@@ -230,6 +420,9 @@ function zariz_get_snapshot_parents_ids_not_strict($snapshot_id, $ids = array())
  *
  * @param $branch_id
  *   The branch node ID.
+ * @param $last_id_field_name
+ *   The name of the field that holds the last entity ID. Defaults to
+ *   "field_last_node".
  *
  * @return
  *   Array keyed with:
@@ -521,12 +714,19 @@ function zariz_snapshot_set_last_entity_id($branch_id, $id, $field_name = 'field
  */
 function zariz_get_snapshot_from_branch($branch_id, $create = FALSE, $offset = 0, $parent_snapshot = NULL) {
   $query = new EntityFieldQuery();
-  $result = $query
+  $query
     ->entityCondition('entity_type', 'snapshot')
     ->propertyCondition('nid', $branch_id)
     ->range($offset, $offset + 1)
-    ->propertyOrderBy('sid', 'DESC')
-    ->execute();
+    ->propertyOrderBy('sid', 'DESC');
+
+  if ($create) {
+    // If we need to create a snapshot, make sure we are not returning an
+    // existing yet locked one.
+    $query->propertyCondition('locked', TRUE, '<>');
+  }
+
+  $result = $query->execute();
 
   if (empty($result['snapshot'])) {
     if (!$create) {
@@ -537,7 +737,7 @@ function zariz_get_snapshot_from_branch($branch_id, $create = FALSE, $offset = 0
       throw new Exception('Offset value should be 0, when calling zariz_get_snapshot_from_branch() with $create set to TRUE.');
     }
 
-    $parent_snapshot = $parent_snapshot ? $parent_snapshot : zariz_get_snapshot_from_branch($branch_id, FALSE, 1);
+    $parent_snapshot = $parent_snapshot ? $parent_snapshot : zariz_get_snapshot_from_branch($branch_id, FALSE);
 
     $values = array(
       'nid' => $branch_id,

@@ -1,0 +1,85 @@
+<?php
+
+/**
+ * @file
+ * Contains ZarizBranchMergeTestCase
+ */
+
+class ZarizBranchMergeTestCase extends DrupalWebTestCase {
+
+  public static function getInfo() {
+    return array(
+      'name' => 'Merge',
+      'description' => 'Test the API for merging branches.',
+      'group' => 'Zariz',
+    );
+  }
+
+  function setUp() {
+    parent::setUp('zariz');
+    $og_field = og_fields_info(OG_AUDIENCE_FIELD);
+    $og_field['field']['cardinality'] = 1;
+    og_create_field('field_branch', 'node', 'article', $og_field);
+  }
+
+  /**
+   * Test merging branches where the "to branch" has higher ID.
+   *
+   * Scenario:
+   * - Create live, dev branches.
+   * - live: node1, node3
+   * - dev1: node2
+   */
+  function testMergeToBranchWithHigherId() {
+    $live_node = zariz_create_branch('live');
+    $dev_node = zariz_create_branch('dev', $live_node);
+
+    // Add a group content.
+    $values = array(
+      'type' => 'article',
+      'title' => 'title1',
+    );
+    $values['field_branch'][LANGUAGE_NONE][0]['target_id'] = $live_node->nid;
+    $node1 = $this->drupalCreateNode($values);
+
+    $values['title'] = 'title1 - branch dev';
+    $values['field_branch'][LANGUAGE_NONE][0]['target_id'] = $dev_node->nid;
+    $values['field_uuid'][LANGUAGE_NONE][0]['value'] = $node1->field_uuid[LANGUAGE_NONE][0]['value'];
+    $node2 = $this->drupalCreateNode($values);
+
+    unset($values['field_uuid']);
+    $values['title'] = 'title2';
+    $values['field_branch'][LANGUAGE_NONE][0]['target_id'] = $live_node->nid;
+    $node3 = $this->drupalCreateNode($values);
+
+    $live_snapshot = zariz_get_snapshot_from_branch($live_node->nid);
+    $dev_snapshot = zariz_get_snapshot_from_branch($dev_node->nid);
+
+    // Assert snapshots are not locked, and the last node ID in the "to branch"
+    // is node3.
+    $this->assertFalse($live_snapshot->isLocked());
+    $this->assertFalse($dev_snapshot->isLocked());
+    $this->assertEqual($live_snapshot->field_last_node[LANGUAGE_NONE][0]['target_id'], $node3->nid);
+
+    $new_live_snapshot = zariz_merge_branch($dev_node->nid, $live_node->nid);
+
+    // Re-load snapshot.
+    $live_snapshot = entity_load_single('snapshot', $live_snapshot->sid);
+    $dev_snapshot = entity_load_single('snapshot', $dev_snapshot->sid);
+
+    // Assert snapshots in both branches were locked.
+    $this->assertTrue($live_snapshot->isLocked());
+    $this->assertTrue($dev_snapshot->isLocked());
+
+    // Assert a new snapshot on the "to branch" was created, and locked.
+    $this->assertTrue($live_snapshot->sid < $new_live_snapshot->sid, 'New snapshot created.');
+    $this->assertTrue($new_live_snapshot->isLocked());
+
+    // Assert a new node was created in the "to branch."
+    $this->assertNotEqual($new_live_snapshot->field_last_node[LANGUAGE_NONE][0]['target_id'], $node3->nid);
+
+    // Assert new node has the original UUID.
+    $node4 = node_load($new_live_snapshot->field_last_node[LANGUAGE_NONE][0]['target_id']);
+    $this->assertEqual($node1->field_uuid[LANGUAGE_NONE][0]['value'], $node4->field_uuid[LANGUAGE_NONE][0]['value'], 'New merged node has same UUID as the original one.');
+  }
+}

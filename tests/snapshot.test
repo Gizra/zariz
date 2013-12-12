@@ -25,7 +25,7 @@ class ZarizSnapshotTestCase extends DrupalWebTestCase {
   /**
    * Test snapshot creation.
    */
-  function testCreateSnapshot() {
+  function testCreate() {
     $branch_node = zariz_create_branch('master');
     $branch_id = $branch_node->nid;
 
@@ -48,5 +48,26 @@ class ZarizSnapshotTestCase extends DrupalWebTestCase {
     // Assert this is the same snapshot.
     $this->assertEqual($snapshot1->sid, $snapshot2->sid, 'Existing snapshot was used when added content.');
     $this->assertEqual($node2->nid, $snapshot1->field_last_node[LANGUAGE_NONE][0]['target_id'], 'Last node ID updated on Snapshot.');
+  }
+
+  /**
+   * Test snapshot locking.
+   */
+  function testLock() {
+    $branch_node = zariz_create_branch('master');
+    $snapshot = zariz_get_snapshot_from_branch($branch_node->nid);
+
+    $this->assertFalse($snapshot->isLocked(), 'Snapshot is not locked when created.');
+
+    $snapshot->lock();
+    $this->assertTrue($snapshot->isLocked(), 'Snapshot is marked as locked after locking it.');
+
+    try {
+      $snapshot->save();
+      $this->fail('Can save a locked snapshot.');
+    }
+    catch(Exception $e) {
+      $this->pass('Cannot save a locked snapshot.');
+    }
   }
 }
