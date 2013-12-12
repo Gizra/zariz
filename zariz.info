@@ -7,4 +7,5 @@ dependencies[] = og
 files[] = includes/zariz.snapshot.inc
 
 ; Tests
-files[] = tests/zariz.snapshot.test
+files[] = tests/snapshot.test
+files[] = tests/queryAlter.test

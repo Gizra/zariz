@@ -1,0 +1,101 @@
+<?php
+
+/**
+ * @file
+ * Contains ZarizQueryAlterTestCase
+ */
+
+class ZarizQueryAlterTestCase extends DrupalWebTestCase {
+
+  public static function getInfo() {
+    return array(
+      'name' => 'Query alter',
+      'description' => 'Test getting content based on the OG context.',
+      'group' => 'Zariz',
+    );
+  }
+
+  function setUp() {
+    parent::setUp('zariz');
+    $og_field = og_fields_info(OG_AUDIENCE_FIELD);
+    $og_field['field']['cardinality'] = 1;
+    og_create_field('field_branch', 'node', 'article', $og_field);
+  }
+
+  /**
+   * Test snapshot creation.
+   *
+   * Scenario:
+   * - Create live, dev1, dev2 branches.
+   * - live: node1, node2, node3
+   * - dev1: a newer version for node3, node4
+   */
+  function testQueryAlter() {
+    $live_node = zariz_create_branch('live');
+    $dev1_node = zariz_create_branch('dev1', $live_node);
+
+    $info = array(
+      $live_node->nid => array(
+        'title1' => 'uuid1',
+        'title2' => 'uuid2',
+        'title3' => 'uuid3',
+      ),
+      $dev1_node->nid => array(
+        'title3 - new version' => 'uuid3',
+        'title4' => 'uuid4',
+      ),
+    );
+
+    $expected_results = array(
+      $live_node->nid => array(
+        'title1' => 'uuid1',
+        'title2' => 'uuid2',
+        'title3' => 'uuid3',
+      ),
+      $dev1_node->nid => array(
+        'title1' => 'uuid1',
+        'title2' => 'uuid2',
+        'title3 - new version' => 'uuid3',
+        'title4' => 'uuid4',
+      ),
+    );
+
+    // Array of the group content, keyed by the branch ID.
+    $nodes = array();
+    foreach ($info as $branch_id => $values) {
+      foreach ($values as $title => $uuid) {
+        // Create group content.
+        $values = array(
+          'type' => 'article',
+          'title' => $title,
+        );
+        $values['field_branch'][LANGUAGE_NONE][0]['target_id'] = $branch_id;
+        $values['field_uuid'][LANGUAGE_NONE][0]['value'] = $uuid;
+        $node = $this->drupalCreateNode($values);
+
+        $nodes[$branch_id][] = $node;
+      }
+    }
+
+    foreach ($expected_results as $branch_id => $values) {
+      $query = new EntityFieldQuery();
+      $result = $query
+        ->entityCondition('entity_type', 'node')
+        ->entityCondition('bundle', 'article')
+        ->addTag('zariz')
+        ->addMetaData('zariz', array('branch_id' => $branch_id))
+        ->propertyOrderBy('nid')
+        ->execute();
+
+      $nids = array_keys($result['node']);
+      $return_values = array();
+      foreach (node_load_multiple($nids) as $node) {
+        $title = $node->title;
+        $uuid = $node->field_uuid[LANGUAGE_NONE][0]['value'];
+        $return_values[$title] = $uuid;
+      }
+
+      $this->assertEqual($return_values, $values, 'Correct values returned by query alter for the branch.');
+    }
+  }
+}
