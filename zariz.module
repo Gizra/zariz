@@ -673,20 +673,29 @@ function zariz_query_zariz_alter(QueryAlterableInterface $query) {
     return;
   }
 
-  // @todo: Get snapshot ID from query metadata.
+  $branch_id = FALSE;
 
-  if (!module_exists('og_context') || !$og_context = og_context()) {
+  if ($zariz = $query->getMetaData('zariz')) {
+    // Get branch ID from query metadata.
+    $branch_id = $zariz['branch_id'];
+  }
+  elseif (module_exists('og_context') && $og_context = og_context()) {
+    if ($og_context['group_type'] != 'node') {
+      return;
+    }
+    // Get branch ID from context.
+    $branch_id = $og_context['gid'];
+  }
+
+  if (!$branch_id) {
+    // No branch ID found.
     return;
   }
 
-  if ($og_context['group_type'] != 'node') {
-    return;
-  }
 
-  $branch_nid = $og_context['gid'];
-  $snapshot = zariz_get_snapshot_from_branch($branch_nid);
+  $snapshot = zariz_get_snapshot_from_branch($branch_id);
 
-  $tables = $query->getTables();
+  $tables = &$query->getTables();
   foreach ($tables as $alias => $info) {
     if ($info['table'] == 'node') {
       $node_alias = $alias;
@@ -713,6 +722,13 @@ function zariz_query_zariz_alter(QueryAlterableInterface $query) {
   }
 
   $query->condition($db_or);
+
+  // Change "FROM" value, so the grouping will always use the highest node ID.
+  $form_query = db_select('node', 'n');
+  $form_query
+    ->fields('n')
+    ->orderBy('n.nid', 'DESC');
+  $tables['node']['table'] = $form_query;
 
   // @todo: Remove alias harcoding.
   // @todo: Remove field table hardcoding.
