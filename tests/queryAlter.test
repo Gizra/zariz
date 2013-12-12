@@ -95,7 +95,7 @@ class ZarizQueryAlterTestCase extends DrupalWebTestCase {
         $return_values[$title] = $uuid;
       }
 
-      $this->assertEqual($return_values, $values, 'Correct values returned by query alter for the branch.');
+      $this->assertEqual($return_values, $values);
     }
   }
 }

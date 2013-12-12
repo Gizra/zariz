@@ -126,8 +126,7 @@ function zariz_create_branch($branch_name, $parent_branch = NULL, $parent_snapsh
 function zariz_get_branch_parents_ids($branch_nid, $include_current = TRUE, $ids = array()) {
   $wrapper = entity_metadata_wrapper('node', $branch_nid);
 
-  $ids = array();
-  if (!$ids && $include_current) {
+  if ($include_current) {
     $branch_node = $wrapper->value();
     $ids[] = $branch_node->nid;
   }
@@ -723,11 +722,21 @@ function zariz_query_zariz_alter(QueryAlterableInterface $query) {
 
   $query->condition($db_or);
 
-  // Change "FROM" value, so the grouping will always use the highest node ID.
+  // Change "FROM" value, so the grouping will always use the content from the
+  // closest branch, when the UUID is equal.
+  // This is done by using a subquery that will "GROUP BY FIELD(ogm.gid, 2, 1, 3)"
+  // where the number are the branch IDs.
   $form_query = db_select('node', 'n');
+  $form_query->innerJoin('og_membership', 'ogm', "ogm.etid = n.nid");
+
+  $branch_ids = array_reverse(zariz_get_branch_parents_ids($branch_id));
+
+  $alias = $form_query->addExpression('FIELD(ogm.gid, :args)', NULL, array(':args' => implode(',', $branch_ids)));
   $form_query
-    ->fields('n')
-    ->orderBy('n.nid', 'DESC');
+    ->fields('n', array('nid', 'vid', 'type'))
+    ->fields('ogm', array('gid'))
+    ->orderBy($alias);
+
   $tables['node']['table'] = $form_query;
 
   // @todo: Remove alias harcoding.
