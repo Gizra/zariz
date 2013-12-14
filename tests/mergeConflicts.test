@@ -1,0 +1,73 @@
+<?php
+
+/**
+ * @file
+ * Contains ZarizBranchMergeConflictsTestCase
+ */
+
+class ZarizBranchMergeConflictsTestCase extends DrupalWebTestCase {
+
+  public static function getInfo() {
+    return array(
+      'name' => 'Merge conflicts',
+      'description' => 'Test the API for checking merge conflicts.',
+      'group' => 'Zariz',
+    );
+  }
+
+  function setUp() {
+    parent::setUp('zariz');
+    $og_field = og_fields_info(OG_AUDIENCE_FIELD);
+    $og_field['field']['cardinality'] = 1;
+    og_create_field('field_branch', 'node', 'article', $og_field);
+  }
+
+  /**
+   * Test getting merge conflicts.
+   *
+   * Conflicts occur when there is a newer content in the "to branch".
+   *
+   * Scenario:
+   * - Create live, dev branches.
+   * - live: node1, node3
+   * - dev1: node2
+   */
+  function testGetMergeConflicts() {
+    $live_node = zariz_create_branch('live');
+    $dev_node = zariz_create_branch('dev', $live_node);
+
+    // Add a group content.
+    $values = array(
+      'type' => 'article',
+      'title' => 'title1',
+    );
+    $values['field_branch'][LANGUAGE_NONE][0]['target_id'] = $live_node->nid;
+    $values['field_uuid'][LANGUAGE_NONE][0]['value'] = 'uuid1';
+    $node1 = $this->drupalCreateNode($values);
+
+    // Add group content on "dev" branch, that has higher node ID and same UUID
+    // as node1.
+    $values['field_branch'][LANGUAGE_NONE][0]['target_id'] = $dev_node->nid;
+    $node2 = $this->drupalCreateNode($values);
+
+    // Assert there are no conflicts.
+    $this->assertFalse(zariz_get_merge_conflicts($dev_node->nid, $live_node->nid), 'No conflicts found.');
+
+    // Add group content on "live" branch, that and same UUID as node1, but
+    // higher node ID than node2.
+    $values['field_branch'][LANGUAGE_NONE][0]['target_id'] = $live_node->nid;
+    $node3 = $this->drupalCreateNode($values);
+
+    // Assert there are conflicts.
+    $expected_result = array(
+      'uuid1' => array(
+        'from' => $node2->nid,
+        'to' => $node3->nid,
+      ),
+    );
+    $this->assertEqual($expected_result, zariz_get_merge_conflicts($dev_node->nid, $live_node->nid), 'Conflicts found.');
+
+    // Assert parent branch was auto detected.
+    $this->assertEqual($expected_result, zariz_get_merge_conflicts($dev_node->nid, $live_node->nid), 'Parent branch was auto-detected and conflicts found.');
+  }
+}

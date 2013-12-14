@@ -31,6 +31,12 @@ function zariz_schema() {
         'unsigned' => TRUE,
         'not null' => FALSE,
       ),
+      'locked' => array(
+        'description' => 'Boolean indicating whether the Snapshot is locked and cannot be edited.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
       'created' => array(
         'description' => 'Timestamp for when the snapshot was created.',
         'type' => 'int',

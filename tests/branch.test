@@ -1,0 +1,39 @@
+<?php
+
+/**
+ * @file
+ * Contains ZarizBranchTestCase
+ */
+
+class ZarizBranchTestCase extends DrupalWebTestCase {
+
+  public static function getInfo() {
+    return array(
+      'name' => 'Branch',
+      'description' => 'Test the Branch API.',
+      'group' => 'Zariz',
+    );
+  }
+
+  function setUp() {
+    parent::setUp('zariz');
+  }
+
+  /**
+   * Test creation of a single master branch.
+   */
+  function testMaster() {
+    $this->assertFalse(variable_get('zariz_master_branch'), 'No master branch.');
+    $branch_node = zariz_create_branch('master');
+
+    $this->assertEqual($branch_node->nid, variable_get('zariz_master_branch'), 'Master branch created.');
+
+    try {
+      zariz_create_branch('another master');
+      $this->fail('Can create a second master branch.');
+    }
+    catch(Exception $e) {
+      $this->pass('Cannot create a second master branch.');
+    }
+  }
+}
