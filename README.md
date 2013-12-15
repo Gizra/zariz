@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/Gizra/zariz.png?branch=6)](https://travis-ci.org/Gizra/zariz)
+[![Build Status](https://travis-ci.org/Gizra/zariz.png?branch=master)](https://travis-ci.org/Gizra/zariz)
 
 Zariz Revision Control module suite for Drupal 7.x
 
