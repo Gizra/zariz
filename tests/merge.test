@@ -23,14 +23,14 @@ class ZarizBranchMergeTestCase extends DrupalWebTestCase {
   }
 
   /**
-   * Test merging branches where the "to branch" has higher ID.
+   * Test merging branches without conflicts.
    *
    * Scenario:
    * - Create live, dev branches.
    * - live: node1, node3
    * - dev1: node2
    */
-  function testMergeToBranchWithHigherId() {
+  function testMerge() {
     $live_node = zariz_create_branch('live');
     $dev_node = zariz_create_branch('dev', $live_node);
 
@@ -55,17 +55,25 @@ class ZarizBranchMergeTestCase extends DrupalWebTestCase {
     $live_snapshot = zariz_get_snapshot_from_branch($live_node->nid);
     $dev_snapshot = zariz_get_snapshot_from_branch($dev_node->nid);
 
-    // Assert snapshots are not locked, and the last node ID in the "to branch"
-    // is node3.
+    // Assert snapshots are not locked.
     $this->assertFalse($live_snapshot->isLocked());
     $this->assertFalse($dev_snapshot->isLocked());
+
+    // Assert and the last node ID in the "to branch" is node3.
     $this->assertEqual($live_snapshot->field_last_node[LANGUAGE_NONE][0]['target_id'], $node3->nid);
+
+    // Assert "from branch" is not marked as merged.
+    $this->assertTrue(empty($dev_node->field_branch_merged[LANGUAGE_NONE][0]['value']), 'Branch is not marked as merged.');
 
     $new_live_snapshot = zariz_merge_branch($dev_node->nid, $live_node->nid);
 
     // Re-load snapshot.
     $live_snapshot = entity_load_single('snapshot', $live_snapshot->sid);
     $dev_snapshot = entity_load_single('snapshot', $dev_snapshot->sid);
+
+    // Assert "from branch" is marked as merged.
+    $dev_node = node_load($dev_node->nid);
+    $this->assertTrue($dev_node->field_branch_merged[LANGUAGE_NONE][0]['value'], 'Branch is marked as merged.');
 
     // Assert snapshots in both branches were locked.
     $this->assertTrue($live_snapshot->isLocked());

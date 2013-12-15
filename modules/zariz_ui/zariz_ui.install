@@ -1,0 +1,30 @@
+<?php
+
+/**
+ * @file
+ * Install, update, and uninstall functions for the Zariz UI module.
+ */
+
+
+/**
+ * Implements hook_install().
+ *
+ * Enable OG-Purl's provider for OG-context.
+ */
+function zariz_ui_install() {
+  $providers = array(
+    'og_purl' => array(),
+    'url' => array(),
+    'node' => array(),
+  );
+
+  variable_set('og_context_negotiation_group_context', $providers);
+
+  $providers_weight = array(
+    'og_purl' => -10,
+    'url' => -9,
+    'node' => -8,
+  );
+
+  variable_get('og_context_providers_weight_group_context', $providers_weight);
+}

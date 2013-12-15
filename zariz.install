@@ -58,19 +58,13 @@ function zariz_install() {
   og_create_field(OG_GROUP_FIELD, 'node', 'branch');
 
   $info = array(
-    // Add Snapshot reference to the Branch content type.
-    'field_snapshot' => array(
-      'label' => 'Snapshot',
-      'target_type' => 'snapshot',
-      'target_bundles' => array(),
-    ),
-    // Add Branch reference to the Branch content type.
+    // Branch reference to the Branch content type.
     'field_parent_branch' => array(
       'label' => 'Branch',
       'target_type' => 'node',
       'target_bundles' => array('branch'),
     ),
-    // Add Last node reference to the Snapshot entity.
+    // Last node reference to the Snapshot entity.
     'field_last_node' => array(
       'label' => 'Last node',
       'target_type' => 'node',
@@ -78,7 +72,7 @@ function zariz_install() {
       'entity_type' => 'snapshot',
       'bundle' => 'snapshot',
     ),
-    // Add Last term reference to the Snapshot entity.
+    // Last term reference to the Snapshot entity.
     'field_last_term' => array(
       'label' => 'Last term',
       'target_type' => 'taxonomy_term',
@@ -120,6 +114,35 @@ function zariz_install() {
       );
       field_create_instance($instance);
     }
+  }
+
+  // Merged field, to Indicate if a branch is merged.
+  $field_name = 'field_branch_merged';
+  if (!field_info_field($field_name)) {
+    $field = array(
+      'field_name' => $field_name,
+      'type' => 'list_boolean',
+      'cardinality' => 1,
+    );
+    field_create_field($field);
+  }
+
+  if (!field_info_instance('node', $field_name, 'branch')) {
+    $instance = array(
+      'entity_type' => 'node',
+      'field_name' => $field_name,
+      'bundle' => 'branch',
+      'label' => t('Is merged'),
+      'description' => t('Indicates if a branch is merged.'),
+      'widget' => array(
+        'module' => 'options',
+        'settings' => array(
+          'display_label' => TRUE,
+        ),
+        'type' => 'options_onoff',
+      ),
+    );
+    field_create_instance($instance);
   }
 }
 
