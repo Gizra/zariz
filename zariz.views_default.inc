@@ -8,7 +8,7 @@
 /**
  * Implements hook_views_default_views().
  */
-function zariz_ui_views_default_views() {
+function zariz_views_default_views() {
   $views = array();
 
   $view = new view();
