@@ -157,7 +157,7 @@ function zariz_merge_branch($from_branch_id, $to_branch_id = NULL) {
   $nids = array_keys($result['node']);
 
   $wrapper = entity_metadata_wrapper('node', $from_branch_id);
-  $to_branch_id = $to_branch_id ? $to_branch_id : $wrapper->field_branch->getIdentifier();
+  $to_branch_id = $to_branch_id ? $to_branch_id : $wrapper->field_parent_branch->getIdentifier();
 
   // Lock the existing snapshots in both branches.
   $from_snapshot = zariz_get_snapshot_from_branch($from_branch_id);
@@ -205,7 +205,7 @@ function zariz_merge_branch($from_branch_id, $to_branch_id = NULL) {
  */
 function zariz_get_merge_conflicts($from_branch_id, $to_branch_id = NULL, $last_id_field_name = 'field_last_node') {
   $from_branch_wrapper = entity_metadata_wrapper('node', $from_branch_id);
-  $to_branch_id = $to_branch_id ? $to_branch_id : $from_branch_wrapper->field_branch->getIdentifier();
+  $to_branch_id = $to_branch_id ? $to_branch_id : $from_branch_wrapper->field_parent_branch->getIdentifier();
 
   $query = new EntityFieldQuery();
   $result = $query
@@ -285,6 +285,8 @@ function zariz_get_merge_conflicts($from_branch_id, $to_branch_id = NULL, $last_
     return;
   }
 
+  $found_conflicts = FALSE;
+
   $nids = array_keys($result['node']);
   foreach (node_load_multiple($nids) as $node) {
     $wrapper = entity_metadata_wrapper('node', $node);
@@ -293,10 +295,11 @@ function zariz_get_merge_conflicts($from_branch_id, $to_branch_id = NULL, $last_
 
     if ($nid > $values[$uuid]['from']) {
       $values[$uuid]['to'] = $node->nid;
+      $found_conflicts = TRUE;
     }
   }
 
-  return !empty($values) ? $values : NULL;
+  return $found_conflicts ? $values : NULL;
 }
 
 /**
@@ -304,8 +307,6 @@ function zariz_get_merge_conflicts($from_branch_id, $to_branch_id = NULL, $last_
  *
  * @param $branch_nid
  *   The branch ID or node.
- * @param $include_current
- *   Determines if the current branch should be included. Defaults to TRUE.
  * @param $ids
  *   Internal use; Array of the parent IDs, used in this recursive function.
  *
@@ -313,14 +314,11 @@ function zariz_get_merge_conflicts($from_branch_id, $to_branch_id = NULL, $last_
  *   array with the branch node ID, and it's parents. The top most parent is the
  *   last element in the array.
  */
-function zariz_get_branch_parents_ids($branch_nid, $include_current = TRUE, $ids = array()) {
+function zariz_get_branch_parents_ids($branch_nid, $ids = array()) {
   $wrapper = entity_metadata_wrapper('node', $branch_nid);
 
-  $ids = array();
-  if (!$ids && $include_current) {
-    $branch_node = $wrapper->value();
-    $ids[] = $branch_node->nid;
-  }
+  $branch_node = $wrapper->value();
+  $ids[] = $branch_node->nid;
 
 
   if (!$parent_node = $wrapper->field_parent_branch->value()) {
@@ -329,7 +327,7 @@ function zariz_get_branch_parents_ids($branch_nid, $include_current = TRUE, $ids
   }
 
   // Call function, with the parent node.
-  $ids = zariz_get_branch_parents_ids($parent_node, TRUE, $ids);
+  $ids = zariz_get_branch_parents_ids($parent_node, $ids);
   return $ids;
 }
 
@@ -404,12 +402,11 @@ function zariz_get_snapshot_parents_ids_not_strict($snapshot_id, $ids = array())
   // Get all the parent branches.
   $ids = array($snapshot_id);
   $snapshot = entity_load_single('snapshot', $snapshot_id);
-  $branch_ids = zariz_get_branch_parents_ids($snapshot->nid, FALSE);
+  $branch_ids = zariz_get_branch_parents_ids($snapshot->nid);
 
   foreach ($branch_ids as $branch_id) {
-    if ($snapshot = zariz_get_snapshot_from_branch($branch_id)) {
-      $ids[] = $snapshot->sid;
-    }
+    $snapshot = zariz_get_snapshot_from_branch($branch_id);
+    $ids[] = $snapshot->sid;
   }
 
   return $ids;
@@ -655,7 +652,7 @@ function zariz_node_insert($node) {
   }
 
   if (!empty($node->_skip_create_snapshot)) {
-    // Node explicetly set to skip snapshot creation. This can be used by
+    // Node explicitly set to skip snapshot creation. This can be used by
     // implementing modules that want for example to create several nodes and
     // only then create a snapshot of them.
     return;
@@ -891,7 +888,6 @@ function zariz_query_zariz_alter(QueryAlterableInterface $query) {
     // No branch ID found.
     return;
   }
-
 
   $snapshot = zariz_get_snapshot_from_branch($branch_id);
 
