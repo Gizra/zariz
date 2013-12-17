@@ -50,7 +50,7 @@ locked it can no longer change.
 $snapshot = zariz_get_snapshot_from_branch($live_node->nid);
 
 // Check if a snapshot is locked.
-$snpashot->islocked()
+$snpashot->isLocked()
 
 // Locking a snpashot.
 $snpashot->lock()
