@@ -53,62 +53,6 @@ function zariz_entity_info() {
   return $items;
 }
 
-
-/**
- * Create a new branch form an existing one.
- *
- * @param $branch_name
- *   The branch name.
- * @param $parent_branch
- *   Optional; The node object of the parent branch.
- * @param $parent_snapshot
- *   Optioanl; The snapshot object from the original branch. This will be
- *   used only if $parent_branch is set.
- *
- * @return
- *   The branch node object.
- */
-function zariz_create_branch($branch_name, $parent_branch = NULL, $parent_snapshot = NULL) {
-  global $user;
-
-  // Check branch doesn't exist already.
-  $query = new EntityFieldQuery();
-  $result = $query
-    ->entityCondition('entity_type', 'node')
-    ->entityCondition('bundle', 'branch')
-    ->propertyCondition('title', $branch_name)
-    ->count()
-    ->execute();
-
-  if ($result) {
-    throw new Exception(format_string('Branch @name already exists.', array('@name' => $branch_name)));
-  }
-
-  $values = array(
-    'type' => 'branch',
-    'title' => $branch_name,
-    'uid' => $user->uid,
-  );
-  $node = entity_create('node', $values);
-
-  $wrapper = entity_metadata_wrapper('node', $node);
-  $wrapper->{OG_GROUP_FIELD}->set(TRUE);
-
-  if ($parent_branch) {
-    $wrapper->field_parent_branch->set($parent_branch);
-    $parent_snapshot = $parent_snapshot ? $parent_snapshot : zariz_get_snapshot_from_branch($parent_branch->nid);
-  }
-
-  $wrapper->save();
-  $node = $wrapper->value();
-
-  // Create a new Snapshot.
-  $snapshot = zariz_get_snapshot_from_branch($node->nid, TRUE, 0, $parent_snapshot);
-  $snapshot->save();
-
-  return $node;
-}
-
 /**
  * Merge the content of a snapshot into another branch.
  *
@@ -601,6 +545,40 @@ function zariz_field_access($op, $field, $entity_type, $entity, $account) {
   }
 }
 
+
+/**
+ * Utility function; Create a new branch form an existing one.
+ *
+ * @param $branch_name
+ *   The branch name.
+ * @param $parent_branch
+ *   Optional; The node object of the parent branch.
+ *
+ * @return
+ *   The branch node object.
+ */
+function zariz_create_branch($branch_name, $parent_branch = NULL) {
+  global $user;
+
+  $values = array(
+    'type' => 'branch',
+    'title' => $branch_name,
+    'uid' => $user->uid,
+  );
+  $node = entity_create('node', $values);
+
+  $wrapper = entity_metadata_wrapper('node', $node);
+  $wrapper->{OG_GROUP_FIELD}->set(TRUE);
+
+  if ($parent_branch) {
+    $wrapper->field_parent_branch->set($parent_branch);
+  }
+
+  $wrapper->save();
+
+  return $node;
+}
+
 /**
  * Implements hook_node_presave().
  *
@@ -611,18 +589,8 @@ function zariz_node_presave($node) {
     return;
   }
 
-  if ($node->type == 'branch' && $master_nid = variable_get('zariz_master_branch')) {
-    // There can be only a single "master" branch.
-    $wrapper = entity_metadata_wrapper('node', $node);
-    if (!$wrapper->field_parent_branch->value()) {
-      $master_node = node_load($master_nid);
-      $params = array(
-        '@title' => $node->title,
-        '@master' => $master_node->title,
-      );
-      throw new Exception(format_string('Branch @title cannot be a "master" branch, as @master already exists.', $params));
-    }
-
+  if ($node->type == 'branch') {
+    _zariz_validate_branch_presave($node);
   }
 
   if (!og_is_group_content_type('node', $node->type)) {
@@ -638,14 +606,65 @@ function zariz_node_presave($node) {
 }
 
 /**
+ * Helper function; Validate a branch can be created.
+ *
+ * @param $node
+ *   The node object.
+ *
+ * @throws Exception
+ *
+ * @see zariz_node_presave()
+ */
+function _zariz_validate_branch_presave($node) {
+  if ($master_nid = variable_get('zariz_master_branch')) {
+    // There can be only a single "master" branch.
+    $wrapper = entity_metadata_wrapper('node', $node);
+    if (!$wrapper->field_parent_branch->value()) {
+      $master_node = node_load($master_nid);
+      $params = array(
+        '@title' => $node->title,
+        '@master' => $master_node->title,
+      );
+      throw new Exception(format_string('Branch @title cannot be a "master" branch, as @master already exists.', $params));
+    }
+  }
+
+  // Check branch doesn't exist already.
+  $query = new EntityFieldQuery();
+  $result = $query
+    ->entityCondition('entity_type', 'node')
+    ->entityCondition('bundle', 'branch')
+    ->propertyCondition('title', $node->title)
+    ->count()
+    ->execute();
+
+  if ($result) {
+    throw new Exception(format_string('Branch @name already exists.', array('@name' => $node->title)));
+  }
+}
+
+/**
  * Implements hook_node_insert().
  *
  * Add node to branch's flag.
  */
 function zariz_node_insert($node) {
-  if ($node->type == 'branch' && !variable_get('zariz_master_branch')) {
-    return variable_set('zariz_master_branch', $node->nid);
+  $wrapper = entity_metadata_wrapper('node', $node);
+  if ($node->type == 'branch') {
+
+    if (!variable_get('zariz_master_branch')) {
+      // Set the branch as the "master" branch.
+      variable_set('zariz_master_branch', $node->nid);
+    }
+
+    $parent_branch = $wrapper->field_parent_branch->value();
+    $parent_snapshot = $parent_branch ? zariz_get_snapshot_from_branch($parent_branch->nid) : NULL;
+
+    // Create a new Snapshot.
+    $snapshot = zariz_get_snapshot_from_branch($node->nid, TRUE, 0, $parent_snapshot);
+    $snapshot->save();
   }
+
   if (!og_is_group_content_type('node', $node->type)) {
     // Not a group content.
     return;
@@ -659,7 +678,6 @@ function zariz_node_insert($node) {
   }
 
   // Add node to snapshot.
-  $wrapper = entity_metadata_wrapper('node', $node);
   $branch_id = $wrapper->field_branch->getIdentifier();
   zariz_snapshot_set_last_entity_id($branch_id, $node->nid);
 }
