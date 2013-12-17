@@ -19,7 +19,7 @@ The OG (Organic groups) group type ``Branch`` is equivalent to a Git branch.
 $live_node = zariz_create_branch('live');
 
 // Branch out fom the live branch.
-$dev_node = zariz_create_branch('dev', $live_node->nid);
+$dev_node = zariz_create_branch('dev', $live_node);
 ```
 
 ### Merging branches
@@ -28,7 +28,7 @@ We can check if there are merge conflicts - meaning that there is already a newe
 content in the "to branch". Zariz will auto-detect the parent branch.
 
 ```php
-$conflicts = zariz_get_merge_conflicts($dev_node->node);
+$conflicts = zariz_get_merge_conflicts($dev_node->nid);
 ```
 
 If there are no conflicts, we can merge - meaning that content from the "from
