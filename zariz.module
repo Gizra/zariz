@@ -79,8 +79,18 @@ function zariz_merge_branch($from_branch_id, $to_branch_id = NULL) {
     throw new Exception('The master branch has no parent branch to merge into.');
   }
 
+  $params = array(
+    '@from-id' => $from_branch_id,
+    '@to-id' => $to_branch_id,
+  );
+
   if (zariz_get_merge_conflicts($from_branch_id, $to_branch_id)) {
-    throw new Exception('Cannot merge conflicting brances.');
+    throw new Exception(format_string('Cannot merge branch @from-id to @to-id as they are conflicting branches.', $params));
+  }
+
+  $wrapper = entity_metadata_wrapper('node', $from_branch_id);
+  if ($wrapper->field_branch_merged->value()) {
+    throw new Exception(format_string('Branch @from-id is already marked as merged.', $params));
   }
 
   // Clone content from "merge from" to "merge to" branch.
@@ -99,8 +109,6 @@ function zariz_merge_branch($from_branch_id, $to_branch_id = NULL) {
   }
 
   $nids = array_keys($result['node']);
-
-  $wrapper = entity_metadata_wrapper('node', $from_branch_id);
   $to_branch_id = $to_branch_id ? $to_branch_id : $wrapper->field_parent_branch->getIdentifier();
 
   // Lock the existing snapshots in both branches.
@@ -109,6 +117,10 @@ function zariz_merge_branch($from_branch_id, $to_branch_id = NULL) {
 
   $to_snapshot = zariz_get_snapshot_from_branch($to_branch_id);
   $to_snapshot->lock();
+
+  // Mark "from branch" as merged.
+  $wrapper->field_branch_merged->set(TRUE);
+  $wrapper->save();
 
   $nodes = node_load_multiple($nids);
   foreach ($nodes as $node) {
@@ -537,6 +549,7 @@ function zariz_get_deleted_node_ids($branch_nid) {
  */
 function zariz_field_access($op, $field, $entity_type, $entity, $account) {
   $field_names = array(
+    'field_branch_merged',
     'field_merged_branches',
     'field_uuid',
   );

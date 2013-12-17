@@ -1,0 +1,141 @@
+<?php
+
+/**
+ * @file
+ * Zariz UI.
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function zariz_ui_menu() {
+  $items = array();
+  $items['create-branch/%/%node'] = array(
+    'type' => MENU_CALLBACK,
+    'access callback' => 'zariz_ui_create_branch_access',
+    'access arguments' => array(1, 2),
+    'page callback' => 'zariz_ui_create_branch',
+    'page arguments' => array(1, 2),
+    'title' => 'Create branch',
+    'description' => 'Create a new branch from an existing one.'
+  );
+
+  $items['merge-branch/%node/%'] = array(
+    'type' => MENU_CALLBACK,
+    'access callback' => 'zariz_ui_merge_branch_access',
+    'access arguments' => array(1, 2),
+    'page callback' => 'zariz_ui_merge_branch',
+    'page arguments' => array(1),
+    'title' => 'Create branch',
+    'description' => 'Merge a branch to its parent branch.'
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_og_permission().
+ */
+function zariz_ui_og_permission() {
+  $items = array();
+  $items['merge branch'] = array(
+    'title' => t('Merge branch'),
+    'description' => t('Merge a branch to its parent branch.'),
+  );
+
+  return $items;
+}
+
+/**
+ * Access callback; Determine if user can create a new branch.
+ *
+ * @param $parent_branch
+ *   The existing branch node object.
+ * @param $branch_name
+ *   The name of the new branch.
+ */
+function zariz_ui_create_branch_access($branch_name, $parent_branch) {
+  if ($parent_branch->type != 'branch') {
+    // Not a branch node type.
+    return;
+  }
+
+  if (!entity_access('view', 'node', $parent_branch)) {
+    // User doesn't have access to the node.
+    return;
+  }
+
+  $query = new EntityFieldQuery();
+  $result = $query
+    ->entityCondition('entity_type', 'node')
+    ->entityCondition('bundle', 'branch')
+    ->propertyCondition('title', $branch_name)
+    ->count()
+    ->execute();
+
+  if ($result) {
+    // Branch already exists.
+    return;
+  }
+
+  return user_access('create branch content');
+}
+
+/**
+ * Page callback; Create a new branch, and redirect to it.
+ *
+ * @param $branch_name
+ *   The branch name.
+ * @param $parent_branch
+ *   The node object of the parent branch.
+ *
+ * @see zariz_create_branch()
+ */
+function zariz_ui_create_branch($branch_name, $parent_branch) {
+  $node = zariz_create_branch($branch_name, $parent_branch);
+  drupal_goto('node/' . $node->nid);
+}
+
+/**
+ * Access callback; Determine if a branch can be merged.
+ *
+ * @param $node
+ *   The branch node object.
+ * @param $token
+ *   A token hash, created based on the node ID.
+ */
+function zariz_ui_merge_branch_access($node, $token) {
+  if (!drupal_valid_token($token, $node->nid)) {
+    // Token isn't invalid.
+    return;
+  }
+
+  if ($node->type != 'branch') {
+    // Node isn't a branch.
+    return;
+  }
+
+  if (!og_user_access('node', $node->nid, 'merge branch')) {
+    // User doesn't have access to it.
+    return;
+  }
+
+  $wrapper = entity_metadata_wrapper('node', $node);
+  if (!$wrapper->field_parent_branch->value()) {
+    // Branch doesn't have a parent branch.
+    return;
+  }
+
+  return TRUE;
+}
+
+/**
+ * Page callback; Merge branch to its parent branch.
+ *
+ * @param $node
+ *   The branch node object.
+ */
+function zariz_ui_merge_branch($node) {
+  zariz_merge_branch($node->nid);
+  drupal_goto('node/' . $node->nid);
+}
