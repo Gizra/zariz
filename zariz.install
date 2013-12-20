@@ -60,9 +60,21 @@ function zariz_install() {
   $info = array(
     // Branch reference to the Branch content type.
     'field_parent_branch' => array(
-      'label' => 'Branch',
+      'label' => 'Parent branch',
       'target_type' => 'node',
       'target_bundles' => array('branch'),
+      'instance_settings' => array(
+        // Add entity reference prepopulate.
+        'behaviors' => array(
+          'prepopulate' => array(
+            'action' => 'hide',
+            'fallback' => 'hide',
+            'og_context' => TRUE,
+            'action_on_edit' => TRUE,
+            'status' => TRUE,
+          ),
+        ),
+      ),
     ),
     // Last node reference to the Snapshot entity.
     'field_last_node' => array(
@@ -87,6 +99,7 @@ function zariz_install() {
       'entity_type' => 'node',
       'bundle' => 'branch',
       'cardinality' => 1,
+      'instance_settings' => array(),
     );
     if (!field_info_field($field_name)) {
       $field = array(
@@ -111,6 +124,7 @@ function zariz_install() {
         'field_name' => $field_name,
         'bundle' => $value['bundle'],
         'label' => $value['label'],
+        'settings' => $value['instance_settings'],
       );
       field_create_instance($instance);
     }
