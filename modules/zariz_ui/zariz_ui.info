@@ -2,6 +2,8 @@ name = Zariz UI
 description = User interface for Zariz.
 core = 7.x
 
+dependencies[] = clone
+dependencies[] = entityreference_prepopulate
 dependencies[] = og_context
 dependencies[] = og_purl
 dependencies[] = zariz

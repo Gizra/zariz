@@ -263,18 +263,22 @@ function zariz_get_merge_conflicts($from_branch_id, $to_branch_id = NULL, $last_
  *
  * @param $branch_nid
  *   The branch ID or node.
+ * @param $include
+ *   Determines if to include the given branch ID. Defaults to TRUE.
  * @param $ids
  *   Internal use; Array of the parent IDs, used in this recursive function.
  *
  * @return
- *   array with the branch node ID, and it's parents. The top most parent is the
+ *   Array with the branch node ID, and it's parents. The top most parent is the
  *   last element in the array.
  */
-function zariz_get_branch_parents_ids($branch_nid, $ids = array()) {
+function zariz_get_branch_parents_ids($branch_nid, $include = TRUE, $ids = array()) {
   $wrapper = entity_metadata_wrapper('node', $branch_nid);
 
   $branch_node = $wrapper->value();
-  $ids[] = $branch_node->nid;
+  if ($include) {
+    $ids[] = $branch_node->nid;
+  }
 
 
   if (!$parent_node = $wrapper->field_parent_branch->value()) {
@@ -283,7 +287,7 @@ function zariz_get_branch_parents_ids($branch_nid, $ids = array()) {
   }
 
   // Call function, with the parent node.
-  $ids = zariz_get_branch_parents_ids($parent_node, $ids);
+  $ids = zariz_get_branch_parents_ids($parent_node, TRUE, $ids);
   return $ids;
 }
 
@@ -445,6 +449,31 @@ function zariz_get_pages_list_by_snapshot_json(Snapshot $snapshot) {
 }
 
 /**
+ * Return array of all group content that has "field_branch" field.
+ *
+ * @param $entity_type
+ *   The entity type. Defaults to "node".
+ *
+ * @return
+ *   Array keyed by the bundle name, and the bundle label as value. NULL if no
+ *   bundles exist for the entity type.
+ */
+function zariz_get_group_content_bundles($entity_type = 'node') {
+  $field = field_info_field('field_branch');
+  if (empty($field['bundles'][$entity_type])) {
+    return;
+  }
+
+  $return = array();
+  $entity_info  = entity_get_info($entity_type);
+  foreach ($field['bundles']['node'] as $bundle) {
+    $return[$bundle] = $entity_info['bundles'][$bundle]['label'];
+  }
+
+  return $return;
+}
+
+/**
  * Get a page list of inserted and deleted items, from a single snapshot.
  *
  * @todo: Deal with all entities, not just node.
@@ -550,7 +579,7 @@ function zariz_get_deleted_node_ids($branch_nid) {
 function zariz_field_access($op, $field, $entity_type, $entity, $account) {
   $field_names = array(
     'field_branch_merged',
-    'field_merged_branches',
+    'field_deleted_snapshots',
     'field_uuid',
   );
   if ($op == 'edit' && in_array($field['field_name'], $field_names)) {
@@ -817,13 +846,7 @@ function zariz_clone_node_alter($node, $context) {
     return;
   }
 
-  if (!$og_context = og_context()) {
-    // Safe guard against a failure of PURL to redirect to a group.
-    // @todo: Check if this can really happen.
-    throw new Exception('Cloning content should be inside a branch context.');
-  }
-
-
+  $og_context = og_context();
   // Use the original node title.
   $node->title = $context['original_node']->title;
 
@@ -837,7 +860,7 @@ function zariz_clone_node_alter($node, $context) {
     return;
   }
 
-  if ($new_branch_wrapper->field_branch->getIdentifier() != $wrapper->field_branch->getIdentifier()) {
+  if ($new_branch_wrapper->field_parent_branch->getIdentifier() != $wrapper->field_branch->getIdentifier()) {
     $params = array(
       '@origin' => $wrapper->field_branch->label(),
       '@destination' => $new_branch_wrapper->label(),
@@ -845,8 +868,7 @@ function zariz_clone_node_alter($node, $context) {
     throw new Exception(format_string('Cannot clone content from branch @origin to @destination as it was not branched from it.', $params));
   }
 
-  // Set the group audience field according to the existing context. Like this
-  // we allow "cherry-picking" content from branch to branch.
+  // Set the group audience field according to the existing context.
   $wrapper->field_branch->set($og_context['gid']);
 }
 
@@ -955,7 +977,7 @@ function zariz_query_zariz_alter(QueryAlterableInterface $query) {
   $form_query
     ->fields('n')
     ->orderBy('n.nid', 'DESC');
-  $tables['node']['table'] = $form_query;
+  $tables[$alias]['table'] = $form_query;
 
   // @todo: Remove alias harcoding.
   // @todo: Remove field table hardcoding.
@@ -1007,16 +1029,22 @@ function zariz_field_create_instance($instance) {
   $og_field = og_fields_info(OG_AUDIENCE_FIELD);
   $og_field['field']['cardinality'] = 1;
   $og_field['instance']['label'] = 'Branch';
-  $og_field['instance']['required'] = 'TRUE';
+  $og_field['instance']['required'] = TRUE;
+  // Add entity reference prepopulate.
+  $og_field['instance']['settings'] = !empty($og_field['instance']['settings']) ? $og_field['instance']['settings'] : array();
+  $og_field['instance']['settings'] += array(
+    'behaviors' => array(
+      'prepopulate' => array(
+        'action' => 'redirect',
+        'fallback' => 'hide',
+        'og_context' => TRUE,
+        'action_on_edit' => TRUE,
+        'status' => TRUE,
+      ),
+    ),
+  );
 
   og_create_field('field_branch', $entity_type, $bundle, $og_field);
-
-  // Add "Other branches" field.
-  $og_field = og_fields_info(OG_AUDIENCE_FIELD);
-  $og_field['field']['cardinality'] = FIELD_CARDINALITY_UNLIMITED;
-  $og_field['instance']['label'] = 'All branches';
-
-  og_create_field('field_merged_branches', $entity_type, $bundle, $og_field);
 
   // Add "UUID" field.
   $field_name = 'field_uuid';
@@ -1075,6 +1103,36 @@ function zariz_field_create_instance($instance) {
       'label' => 'Deleted snapshots',
     );
     field_create_instance($instance);
+  }
+}
+
+/**
+ * Implements hook_modules_enabled().
+ *
+ * Make "Article" content type a group content.
+ */
+function zariz_modules_enabled($modules) {
+  if (in_array('zariz', $modules)) {
+    $og_field = og_fields_info(OG_AUDIENCE_FIELD);
+    $og_field['field']['cardinality'] = 1;
+    $og_field['instance']['label'] = 'Branch';
+    $og_field['instance']['required'] = TRUE;
+
+    // Add entity reference prepopulate.
+    $og_field['instance']['settings'] = !empty($og_field['instance']['settings']) ? $og_field['instance']['settings'] : array();
+    $og_field['instance']['settings'] += array(
+      'behaviors' => array(
+        'prepopulate' => array(
+          'action' => 'redirect',
+          'fallback' => 'hide',
+          'og_context' => TRUE,
+          'action_on_edit' => TRUE,
+          'status' => TRUE,
+        ),
+      ),
+    );
+
+    og_create_field('field_branch', 'node', 'article', $og_field);
   }
 }
 

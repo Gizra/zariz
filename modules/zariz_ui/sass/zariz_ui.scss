@@ -1,0 +1,60 @@
+#zariz {
+  position: fixed;
+  top: 0px;
+  width: 100%;
+  padding: 10px 20px;
+  color: white;
+
+  a {
+    color: white;
+    text-decoration: underline;
+  }
+
+  ul {
+
+    li {
+      display: inline-block;
+      margin-left: 20px; // LTR
+
+      &.first {
+        margin-left: 0; // LTR
+      }
+    }
+  }
+}
+
+html {
+
+  body.zariz-toolbar {
+    margin-top: 70px !important;
+
+    &.admin-menu {
+      // In case admin menu is present push it further down.
+      margin-top: 100px !important;
+
+      #zariz {
+        top: 35px;
+      }
+    }
+
+    &.branch-merged {
+
+    }
+
+    &.branch-unmerged {
+
+      #zariz {
+        background-color:rgba(0, 180, 0, 0.7);
+      }
+    }
+
+    &.master-branch {
+
+      #zariz {
+        background-color:rgba(250, 0, 0, 0.7);
+      }
+    }
+  }
+}
+
+

@@ -10,15 +10,6 @@
  */
 function zariz_ui_menu() {
   $items = array();
-  $items['create-branch/%/%node'] = array(
-    'type' => MENU_CALLBACK,
-    'access callback' => 'zariz_ui_create_branch_access',
-    'access arguments' => array(1, 2),
-    'page callback' => 'zariz_ui_create_branch',
-    'page arguments' => array(1, 2),
-    'title' => 'Create branch',
-    'description' => 'Create a new branch from an existing one.'
-  );
 
   $items['merge-branch/%node/%'] = array(
     'type' => MENU_CALLBACK,
@@ -31,6 +22,54 @@ function zariz_ui_menu() {
   );
 
   return $items;
+}
+
+/**
+ * Implements hook_menu_alter().
+ *
+ * Allow creating a clone instead of editing.
+ */
+function zariz_ui_menu_alter(&$items) {
+  $items['node/%node/edit']['page callback'] = 'zariz_ui_node_page_edit';
+}
+
+/**
+ * Redirect to clone form, or call the default node edit page.
+ *
+ * @param $node
+ *   The node object.
+ */
+function zariz_ui_node_page_edit($node) {
+  $og_context = og_context();
+  $branch_id = $og_context['gid'];
+
+  $clone = FALSE;
+
+  if ($branch_ids = zariz_get_branch_parents_ids($branch_id, FALSE)) {
+    // Check if the content already exists in the parents, by comparing the
+    // UUID.
+    $wrapper = entity_metadata_wrapper('node', $node);
+    $uuid = $wrapper->field_uuid->value();
+    $query = new EntityFieldQuery();
+    $result = $query
+      ->entityCondition('entity_type', 'node')
+      // @todo: Remove hardcoding to article
+      ->entityCondition('bundle', 'article')
+      ->fieldCondition('field_branch', 'target_id', $branch_ids, 'IN')
+      ->fieldCondition('field_uuid', 'value', $uuid)
+      ->range(0, 1)
+      ->execute();
+
+    $clone = !empty($result['node']);
+  }
+
+  if ($clone) {
+    module_load_include('inc', 'clone', 'clone.pages');
+    return clone_node_check($node);
+  }
+
+  module_load_include('inc', 'node', 'node.pages');
+  return node_page_edit($node);
 }
 
 /**
@@ -47,53 +86,13 @@ function zariz_ui_og_permission() {
 }
 
 /**
- * Access callback; Determine if user can create a new branch.
+ * Implements hook_form_FORM_ID_alter().
  *
- * @param $parent_branch
- *   The existing branch node object.
- * @param $branch_name
- *   The name of the new branch.
+ * Remove the PURL field from the branch node form, so it will be auto
+ * populated.
  */
-function zariz_ui_create_branch_access($branch_name, $parent_branch) {
-  if ($parent_branch->type != 'branch') {
-    // Not a branch node type.
-    return;
-  }
-
-  if (!entity_access('view', 'node', $parent_branch)) {
-    // User doesn't have access to the node.
-    return;
-  }
-
-  $query = new EntityFieldQuery();
-  $result = $query
-    ->entityCondition('entity_type', 'node')
-    ->entityCondition('bundle', 'branch')
-    ->propertyCondition('title', $branch_name)
-    ->count()
-    ->execute();
-
-  if ($result) {
-    // Branch already exists.
-    return;
-  }
-
-  return user_access('create branch content');
-}
-
-/**
- * Page callback; Create a new branch, and redirect to it.
- *
- * @param $branch_name
- *   The branch name.
- * @param $parent_branch
- *   The node object of the parent branch.
- *
- * @see zariz_create_branch()
- */
-function zariz_ui_create_branch($branch_name, $parent_branch) {
-  $node = zariz_create_branch($branch_name, $parent_branch);
-  drupal_goto('node/' . $node->nid);
+function zariz_ui_form_branch_node_form_alter(&$form, $form_state) {
+  unset($form['og_purl']);
 }
 
 /**
@@ -138,4 +137,154 @@ function zariz_ui_merge_branch_access($node, $token) {
 function zariz_ui_merge_branch($node) {
   zariz_merge_branch($node->nid);
   drupal_goto('node/' . $node->nid);
+}
+
+/**
+ * HTML preprocess.
+ *
+ * Add some page classes, so global page theming can adjust to the toolbar.
+ */
+function zariz_ui_preprocess_html(&$variables) {
+  if (!zariz_ui_toolbar_access()) {
+    return;
+  }
+
+  $variables['classes_array'][] = 'zariz-toolbar';
+
+  $og_context = og_context();
+
+  $wrapper = entity_metadata_wrapper('node', $og_context['gid']);
+  if (!$parent_label = $wrapper->field_parent_branch->label()) {
+    // Indicate this is the "master" branch.
+    $variables['classes_array'][] = 'master-branch';
+  }
+
+
+  $variables['classes_array'][] = $wrapper->field_branch_merged->value() ? 'branch-merged' : 'branch-unmerged';
+}
+
+/**
+ * Implements hook_page_build().
+ *
+ * Add Zariz toolbar.
+ */
+function zariz_ui_page_build(&$page) {
+  if (strpos($_GET['q'], 'admin/') === 0) {
+    // Admin pages.
+    return;
+  }
+
+  if (!$og_context = og_context()) {
+    if ($master_nid = variable_get('zariz_master_branch')) {
+      // Redirect to the master branch.
+      $purl_params = array(
+        'query' => drupal_get_query_parameters($_GET, array('q')),
+        'purl' => array(
+          'provider' => "og_purl|node",
+          'id' => $master_nid,
+        ),
+      );
+      unset($_GET['destination']);
+      purl_goto($_GET['q'], $purl_params);
+
+    }
+    // No OG context.
+    return;
+  }
+
+  if (!zariz_ui_toolbar_access()) {
+    return;
+  }
+
+  if (strpos($_GET['q'], 'js/') === 0) {
+    // Performance: Skip this entirely for AJAX requests.
+    return;
+  }
+
+  if ($og_context['group_type'] != 'node') {
+    return;
+  }
+
+  $branch_id = $og_context['gid'];
+  $wrapper = entity_metadata_wrapper('node', $branch_id);
+
+  $items = array(l($wrapper->label(), 'node/' . $branch_id));
+
+
+  if ($parent_label = $wrapper->field_parent_branch->label()) {
+
+    if ($wrapper->field_branch_merged->value()) {
+      $items[] = t('Branch already merged.');
+    }
+    elseif (zariz_get_merge_conflicts($branch_id)) {
+      $items[] = t('Merge conflicts');
+    }
+    else {
+      // Check there's content in the branch.
+      $query = new EntityFieldQuery();
+      $result = $query
+        ->entityCondition('entity_type', 'node')
+        // @todo: Remove hardcoding to article
+        ->entityCondition('bundle', 'article')
+        ->fieldCondition('field_branch', 'target_id', $branch_id)
+        ->range(0, 1)
+        ->execute();
+
+      if (!empty($result['node'])) {
+        // Create a merge link.
+        $params = array(
+          '@from_branch' => $wrapper->label(),
+          '@to_branch' => $parent_label,
+        );
+        $token = drupal_get_token($branch_id);
+        $items[] = l(t('Merge @from_branch to @to_branch', $params), "merge-branch/$branch_id/$token");
+      }
+    }
+  }
+
+  // Create new branch.
+  if (user_access('create branch content')) {
+    $items[] = l(t('Create branch'), 'node/add/branch', array('html' => TRUE));
+  }
+
+  $master_nid = variable_get('zariz_master_branch');
+  if (!variable_get('zariz_ui_deny_crud_on_master', TRUE) || $master_nid != $branch_id) {
+    // Add group content links.
+    if ($bundles = zariz_get_group_content_bundles()) {
+      foreach ($bundles as $bundle => $bundle_label) {
+        if (!og_user_access('node', $branch_id, "create $bundle_label content")) {
+          continue;
+        }
+
+
+        $items[] = l(t('Add @label', array('@label' => $bundle_label)), 'node/add/' . str_replace('_', '-', $bundle));
+      }
+    }
+  }
+
+  $page['page_bottom']['zariz_ui']['#markup'] = '<div id="zariz">' . theme('item_list', array('items' => $items)) . '</div>';
+  $page['page_bottom']['zariz_ui']['#attached'] = array();
+
+  $attached = &$page['page_bottom']['zariz_ui']['#attached'];
+  $path = drupal_get_path('module', 'zariz_ui');
+  $attached['css'][] = $path . '/css/zariz_ui.css';
+}
+
+/**
+ * Determine if user has access to the Zariz toolbar.
+ */
+function zariz_ui_toolbar_access() {
+  if (!$og_context = og_context()) {
+    return;
+  }
+
+  if ($og_context['group_type'] != 'node') {
+    return;
+  }
+
+  if (!og_user_access($og_context['group_type'], $og_context['gid'], 'merge branch')) {
+    return;
+  }
+
+  return TRUE;
 }

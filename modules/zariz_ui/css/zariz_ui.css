@@ -1,0 +1,25 @@
+#zariz {
+  position: fixed;
+  top: 0px;
+  width: 100%;
+  padding: 10px 20px;
+  color: white; }
+  #zariz a {
+    color: white;
+    text-decoration: underline; }
+  #zariz ul li {
+    display: inline-block;
+    margin-left: 20px; }
+    #zariz ul li.first {
+      margin-left: 0; }
+
+html body.zariz-toolbar {
+  margin-top: 70px !important; }
+  html body.zariz-toolbar.admin-menu {
+    margin-top: 100px !important; }
+    html body.zariz-toolbar.admin-menu #zariz {
+      top: 35px; }
+  html body.zariz-toolbar.branch-unmerged #zariz {
+    background-color: rgba(0, 180, 0, 0.7); }
+  html body.zariz-toolbar.master-branch #zariz {
+    background-color: rgba(250, 0, 0, 0.7); }
