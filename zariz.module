@@ -580,6 +580,7 @@ function zariz_field_access($op, $field, $entity_type, $entity, $account) {
   $field_names = array(
     'field_branch_merged',
     'field_deleted_snapshots',
+    'field_is_updated',
     'field_uuid',
   );
   if ($op == 'edit' && in_array($field['field_name'], $field_names)) {
@@ -645,6 +646,30 @@ function zariz_node_presave($node) {
     $uuid = md5(rand());
     $wrapper->field_uuid->set($uuid);
   }
+
+  // Check if the UUID already exists.
+  $query = new EntityFieldQuery();
+  $result = $query
+    ->entityCondition('entity_type', 'node')
+    // @todo: Remove hardcoding to article
+    ->entityCondition('bundle', 'article')
+    ->fieldCondition('field_uuid', 'value', $uuid)
+    ->range(0, 1)
+    ->execute();
+
+  if (empty($result['node'])) {
+    return;
+  }
+
+  // Set the "Is updated" field to TRUE, and keep the same "created" date of the
+  // content. Like this, even if the node IDs are changing, we can still query
+  // by the node create date.
+  $wrapper->field_is_updated->set(TRUE);
+  $nid = key($result['node']);
+  $previous_node = node_load($nid);
+
+  $node->created = $previous_node->created;
+  $node->changed = $previous_node->changed;
 }
 
 /**
@@ -972,19 +997,42 @@ function zariz_query_zariz_alter(QueryAlterableInterface $query) {
 
   $query->condition($db_or);
 
-  // Change "FROM" value, so the grouping will always use the highest node ID.
-  $form_query = db_select('node', 'n');
-  $form_query
-    ->fields('n')
-    ->orderBy('n.nid', 'DESC');
-  $tables[$alias]['table'] = $form_query;
+  // The latest version of an edited content should be selected.
+  // This is done by getting the MAX() value of the entity ID.
+  $branch_ids = zariz_get_branch_parents_ids($branch_id);
+  $inner_query = db_select('node', $node_alias);
 
-  // @todo: Remove alias harcoding.
-  // @todo: Remove field table hardcoding.
-  $query->innerJoin('field_data_field_uuid', 'field_uuid', "field_uuid.entity_id = $node_alias.nid");
-  $query
+  $field = field_info_field('field_uuid');
+  $table_name = _field_sql_storage_tablename($field);
+
+  $inner_query->innerJoin($table_name, 'field_uuid', "field_uuid.entity_id = $node_alias.nid");
+  $inner_query->innerJoin('og_membership', 'ogm', "ogm.etid = $node_alias.nid");
+  $inner_query
+    ->fields('field_uuid', array('field_uuid_value'))
     ->condition('field_uuid.entity_type', 'node')
+    ->condition('ogm.gid', $branch_ids, 'IN')
     ->groupBy('field_uuid.field_uuid_value');
+
+  $inner_query->addExpression("MAX($node_alias.nid)", 'nid');
+
+  $query->innerJoin($inner_query, 'max_nid', "max_nid.nid = $node_alias.nid");
+
+  // Inserted content should appear before edited content.
+  // @todo: Change to field_is_content_updated
+  $field = field_info_field('field_is_updated');
+  $table_name = _field_sql_storage_tablename($field);
+
+  $query->leftJoin($table_name, 'field_is_updated', "field_is_updated.entity_id = $node_alias.nid");
+  $query->fields('field_is_updated', array('field_is_updated_value'));
+
+  $query->orderBy('field_is_updated.field_is_updated_value', 'DESC');
+
+  if (count($branch_ids) > 1) {
+    // Order by group IDs, where the current branch is the first one, and the
+    // parent(s) are by order.
+    $query->addExpression('FIELD (ogm.gid, :args)', 'order_by_gid', array(':args' => $branch_ids));
+    $query->orderBy('order_by_gid');
+  }
 }
 
 /**
@@ -1060,7 +1108,7 @@ function zariz_field_create_instance($instance) {
     field_create_field($field);
   }
 
-  if (!field_info_instance($instance['entity_type'], $field_name, $instance['bundle'])) {
+  if (!field_info_instance($entity_type, $field_name, $bundle)) {
     $instance = array(
       'entity_type' => $entity_type,
       'field_name' => $field_name,
@@ -1095,12 +1143,41 @@ function zariz_field_create_instance($instance) {
     field_create_field($field);
   }
 
-  if (!field_info_instance($instance['entity_type'], $field_name, $instance['bundle'])) {
+  if (!field_info_instance($entity_type, $field_name, $bundle)) {
     $instance = array(
       'entity_type' => $entity_type,
       'field_name' => $field_name,
       'bundle' => $bundle,
       'label' => 'Deleted snapshots',
+    );
+    field_create_instance($instance);
+  }
+
+  // "Is updated" field, to indicate a content is an edit of an existing content.
+  $field_name = 'field_is_updated';
+  if (!field_info_field($field_name)) {
+    $field = array(
+      'field_name' => $field_name,
+      'type' => 'list_boolean',
+      'cardinality' => 1,
+    );
+    field_create_field($field);
+  }
+
+  if (!field_info_instance($entity_type, $field_name, $bundle)) {
+    $instance = array(
+      'entity_type' => $entity_type,
+      'field_name' => $field_name,
+      'bundle' => $bundle,
+      'label' => t('Is updated'),
+      'description' => t('Indicates a content is an edit of an existing content.'),
+      'widget' => array(
+        'module' => 'options',
+        'settings' => array(
+          'display_label' => TRUE,
+        ),
+        'type' => 'options_onoff',
+      ),
     );
     field_create_instance($instance);
   }
