@@ -185,7 +185,7 @@ function zariz_ui_page_build(&$page) {
         ),
       );
       unset($_GET['destination']);
-      purl_goto($_GET['q'], $purl_params);
+      purl_goto('<front>', $purl_params);
 
     }
     // No OG context.
@@ -208,8 +208,7 @@ function zariz_ui_page_build(&$page) {
   $branch_id = $og_context['gid'];
   $wrapper = entity_metadata_wrapper('node', $branch_id);
 
-  $items = array(l($wrapper->label(), 'node/' . $branch_id));
-
+  $items = array(l($wrapper->label(), '<front>'));
 
   if ($parent_label = $wrapper->field_parent_branch->label()) {
 
