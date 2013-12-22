@@ -602,12 +602,12 @@ function zariz_get_deleted_node_ids($branch_nid) {
     $uuids[$uuid] = TRUE;
   }
 
-  // Now query for the nodes, based on the UUID in the parent branches.
+  // Query for the nodes, based on the UUID in the parent branches.
   $query = new EntityFieldQuery();
   $result = $query
     ->entityCondition('entity_type', 'node')
     ->entityCondition('bundle', array_keys(zariz_get_group_content_bundles()))
-    ->fieldCondition(field_branch, 'target_id', $branch_ids, 'IN')
+    ->fieldCondition('field_branch', 'target_id', $branch_ids, 'IN')
     ->fieldCondition('field_uuid', 'value', array_keys($uuids), 'IN')
     ->execute();
 
