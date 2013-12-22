@@ -153,14 +153,30 @@ function zariz_ui_preprocess_html(&$variables) {
 
   $og_context = og_context();
 
-  $wrapper = entity_metadata_wrapper('node', $og_context['gid']);
-  if (!$parent_label = $wrapper->field_parent_branch->label()) {
-    // Indicate this is the "master" branch.
-    $variables['classes_array'][] = 'master-branch';
+  $status = zariz_get_merge_status($og_context['gid']);
+  switch ($status) {
+    case ZARIZ_BRANCH_IS_MERGABLE:
+      $class = 'branch-unmerged';
+      break;
+
+    case ZARIZ_BRANCH_IS_MERGED:
+      $class = 'branch-merged';
+      break;
+
+    case ZARIZ_BRANCH_IS_MASTER:
+      $class = 'master-branch';
+      break;
+
+    case ZARIZ_BRANCH_HAS_CONFLICTS:
+      $class = 'branch-conflicts';
+      break;
+
+    case ZARIZ_BRANCH_HAS_NO_CONTENT:
+      $class = 'branch-no-content';
+      break;
   }
 
-
-  $variables['classes_array'][] = $wrapper->field_branch_merged->value() ? 'branch-merged' : 'branch-unmerged';
+  $variables['classes_array'][] = $class;
 }
 
 /**
@@ -199,51 +215,42 @@ function zariz_ui_page_build(&$page) {
 
   $items = array(l($wrapper->label(), '<front>'));
 
+  $status = zariz_get_merge_status($branch_id);
+
   if ($parent_label = $wrapper->field_parent_branch->label()) {
 
-    if ($wrapper->field_branch_merged->value()) {
-      $items[] = t('Branch already merged.');
+    if ($status == ZARIZ_BRANCH_IS_MERGED) {
+      $items[] = t('Branch Merged');
     }
-    elseif (zariz_get_merge_conflicts($branch_id)) {
+    elseif ($status == ZARIZ_BRANCH_HAS_CONFLICTS) {
       $items[] = t('Merge conflicts');
     }
-    else {
-      // Check there's content in the branch.
-      $query = new EntityFieldQuery();
-      $result = $query
-        ->entityCondition('entity_type', 'node')
-        // @todo: Remove hardcoding to article
-        ->entityCondition('bundle', 'article')
-        ->fieldCondition('field_branch', 'target_id', $branch_id)
-        ->range(0, 1)
-        ->execute();
-
-      if (!empty($result['node'])) {
-        // Create a merge link.
-        $params = array(
-          '@from_branch' => $wrapper->label(),
-          '@to_branch' => $parent_label,
-        );
-        $token = drupal_get_token($branch_id);
-        $items[] = l(t('Merge @from_branch to @to_branch', $params), "merge-branch/$branch_id/$token");
-      }
+    elseif ($status == ZARIZ_BRANCH_HAS_NO_CONTENT) {
+      $items[] = t('No content');
+    }
+    elseif ($status == ZARIZ_BRANCH_IS_MERGABLE) {
+      // Create a merge link.
+      $params = array(
+        '@from_branch' => $wrapper->label(),
+        '@to_branch' => $parent_label,
+      );
+      $token = drupal_get_token($branch_id);
+      $items[] = l(t('Merge @from_branch to @to_branch', $params), "merge-branch/$branch_id/$token");
     }
   }
 
-  // Create new branch.
-  if (user_access('create branch content')) {
-    $items[] = l(t('Create branch'), 'node/add/branch', array('html' => TRUE));
-  }
+  if ($status <= ZARIZ_BRANCH_HAS_CONFLICTS || $status == ZARIZ_BRANCH_IS_MASTER) {
+    // Create new branch.
+    if (user_access('create branch content')) {
+      $items[] = l(t('Create branch'), 'node/add/branch', array('html' => TRUE));
+    }
 
-  $master_nid = variable_get('zariz_master_branch');
-  if (!variable_get('zariz_ui_deny_crud_on_master', TRUE) || $master_nid != $branch_id) {
-    // Add group content links.
-    if ($bundles = zariz_get_group_content_bundles()) {
-      foreach ($bundles as $bundle => $bundle_label) {
+    if ($status != ZARIZ_BRANCH_IS_MASTER || !variable_get('zariz_ui_deny_crud_on_master', TRUE)) {
+      // Add group content links.
+      foreach (zariz_get_group_content_bundles() as $bundle => $bundle_label) {
         if (!og_user_access('node', $branch_id, "create $bundle_label content")) {
           continue;
         }
-
 
         $items[] = l(t('Add @label', array('@label' => $bundle_label)), 'node/add/' . str_replace('_', '-', $bundle));
       }
