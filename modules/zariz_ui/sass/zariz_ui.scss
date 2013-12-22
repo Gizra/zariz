@@ -37,6 +37,13 @@ html {
       }
     }
 
+    &.branch-unmerged {
+
+      #zariz {
+        background-color:rgba(0, 180, 0, 0.7);
+      }
+    }
+
     &.branch-merged {
 
       #zariz {
@@ -45,14 +52,15 @@ html {
 
     }
 
-    &.branch-unmerged {
+    &.master-branch {
 
       #zariz {
-        background-color:rgba(0, 180, 0, 0.7);
+        background-color:rgba(0, 0, 0, 0.3);
       }
     }
 
-    &.master-branch {
+    &.branch-no-content,
+    &.branch-conflicts {
 
       #zariz {
         background-color:rgba(250, 0, 0, 0.7);

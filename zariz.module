@@ -6,6 +6,35 @@
  */
 
 /**
+ * Indicate a branch can be merged.
+ */
+define('ZARIZ_BRANCH_IS_MERGABLE', 0);
+
+/**
+ * Indicate branch has no content in it.
+ */
+define('ZARIZ_BRANCH_HAS_NO_CONTENT', 1);
+
+/**
+ * Indicate a branch can not be merged due to conflicts with newer content.
+ */
+define('ZARIZ_BRANCH_HAS_CONFLICTS', 2);
+
+/**
+ * Indicate a branch was already merged.
+ */
+define('ZARIZ_BRANCH_IS_MERGED', 3);
+
+/**
+ * Indicate a branch can not be merged as it is the "master" branch.
+ */
+define('ZARIZ_BRANCH_IS_MASTER', 4);
+
+
+
+
+
+/**
  * Implements hook_menu().
  */
 function zariz_menu() {
@@ -259,6 +288,55 @@ function zariz_get_merge_conflicts($from_branch_id, $to_branch_id = NULL, $last_
 }
 
 /**
+ * Return TRUE if a branch can be merged.
+ *
+ * @param $branch_id
+ *   The node ID or object of the branch.
+ */
+function zariz_is_mergable($branch_id) {
+  return zariz_get_merge_status($branch_id) == ZARIZ_BRANCH_IS_MERGABLE;
+}
+
+/**
+ * Return the merge status of a branch.
+ *
+ * @param $branch_id
+ *   The node ID or object of the branch.
+ *
+ */
+function zariz_get_merge_status($branch_id) {
+  $master_nid = variable_get('zariz_master_branch');
+  if ($master_nid == $branch_id) {
+    return ZARIZ_BRANCH_IS_MASTER;
+  }
+
+  $wrapper = entity_metadata_wrapper('node', $branch_id);
+  if ($wrapper->field_branch_merged->value()) {
+    return ZARIZ_BRANCH_IS_MERGED;
+  }
+
+  if (zariz_get_merge_conflicts($branch_id)) {
+    return ZARIZ_BRANCH_HAS_CONFLICTS;
+  }
+
+  // Check there's content in the branch.
+  $query = new EntityFieldQuery();
+  $result = $query
+    ->entityCondition('entity_type', 'node')
+    // @todo: Remove hardcoding to article
+    ->entityCondition('bundle', 'article')
+    ->fieldCondition('field_branch', 'target_id', $branch_id)
+    ->range(0, 1)
+    ->execute();
+
+  if (empty($result['node'])) {
+    return ZARIZ_BRANCH_HAS_NO_CONTENT;
+  }
+
+  return ZARIZ_BRANCH_IS_MERGABLE;
+}
+
+/**
  * Get the node IDs of the parents of the branch, including the node itself.
  *
  * @param $branch_nid
@@ -455,13 +533,13 @@ function zariz_get_pages_list_by_snapshot_json(Snapshot $snapshot) {
  *   The entity type. Defaults to "node".
  *
  * @return
- *   Array keyed by the bundle name, and the bundle label as value. NULL if no
- *   bundles exist for the entity type.
+ *   Array keyed by the bundle name, and the bundle label as value. Empty array
+ *   if no bundles exist for the entity type.
  */
 function zariz_get_group_content_bundles($entity_type = 'node') {
   $field = field_info_field('field_branch');
   if (empty($field['bundles'][$entity_type])) {
-    return;
+    return array();
   }
 
   $return = array();
@@ -1080,8 +1158,8 @@ function zariz_field_create_instance($instance) {
   $og_field['instance']['required'] = TRUE;
   // Add entity reference prepopulate.
   $og_field['instance']['settings']['behaviors']['prepopulate'] = array(
-    'action' => 'redirect',
-    'fallback' => 'hide',
+    'action' => 'hide',
+    'fallback' => 'redirect',
     'og_context' => TRUE,
     'action_on_edit' => TRUE,
     'status' => TRUE,
