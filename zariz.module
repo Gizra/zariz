@@ -30,28 +30,6 @@ define('ZARIZ_BRANCH_IS_MERGED', 3);
  */
 define('ZARIZ_BRANCH_IS_MASTER', 4);
 
-
-
-
-
-/**
- * Implements hook_menu().
- */
-function zariz_menu() {
-  $items = array();
-  $items['pages-by-snapshot/%entity_object'] = array(
-    'load arguments' => array('snapshot'),
-    'type' => MENU_CALLBACK,
-    'page callback' => 'zariz_get_pages_list_by_snapshot_json',
-    'page arguments' => array(1),
-    'access callback' => TRUE,
-    'title' => 'Pages list',
-    'description' => 'Get pages list by Snapshot.'
-  );
-
-  return $items;
-}
-
 /**
  * Implements hook_entity_info().
  */
@@ -517,16 +495,6 @@ function zariz_get_last_entity_ids_by_snapshot($snapshot_id, $last_id_field_name
 }
 
 /**
- * Page callback; Return pages list by snapshot in JSON.
- *
- * @param Snapshot $snapshot
- *   The Snapshot entity.
- */
-function zariz_get_pages_list_by_snapshot_json(Snapshot $snapshot) {
-  drupal_json_output(zariz_get_page_list_by_snapshot($snapshot));
-}
-
-/**
  * Return array of all group content that has "field_branch" field.
  *
  * @param $entity_type
@@ -558,11 +526,14 @@ function zariz_get_group_content_bundles($entity_type = 'node') {
  *
  * @param $snapshot_id
  *   The snapshot ID or object.
+ * @param $previous_snapshot_id
+ *   Optional; The snapshot ID to limit the query by. Defaults to NULL, which
+ *   will result with the parent snapshot if it exists.
  *
  * @return
  *   Array keyed by "insert" or "deleted" and the URL as value.
  */
-function zariz_get_page_list_by_snapshot($snapshot_id) {
+function zariz_get_page_list_by_snapshot($snapshot_id, $previous_snapshot_id = NULL) {
   $wrapper = entity_metadata_wrapper('snapshot', $snapshot_id);
   $snapshot = $wrapper->value();
 
