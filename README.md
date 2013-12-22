@@ -2,7 +2,7 @@
 
 # Zariz Revision Control module suite for Drupal 7.x
 
-Zariz a suite of Drupal modules and methodology, that models content (nodes)
+Zariz is a suite of Drupal modules and methodology, that models content (nodes)
 creation and editing similar to Git's branches, and allows generating static
 sites from the Drupal backend. You can read more about it in [this](http://www.gizra.com/content/zariz-means-agile/)
 blog post.
