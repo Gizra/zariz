@@ -126,8 +126,7 @@ function zariz_merge_branch($from_branch_id, $to_branch_id = NULL) {
   $query = new EntityFieldQuery();
   $result = $query
     ->entityCondition('entity_type', 'node')
-    // @todo: Remove hardcoding to article
-    ->entityCondition('bundle', 'article')
+    ->entityCondition('bundle', array_keys(zariz_get_group_content_bundles()))
     ->fieldCondition('field_branch', 'target_id', $from_branch_id)
     ->propertyOrderBy('nid')
     ->execute();
@@ -195,8 +194,7 @@ function zariz_get_merge_conflicts($from_branch_id, $to_branch_id = NULL, $last_
   $query = new EntityFieldQuery();
   $result = $query
     ->entityCondition('entity_type', 'node')
-    // @todo: Remove hardcoding to article
-    ->entityCondition('bundle', 'article')
+    ->entityCondition('bundle', array_keys(zariz_get_group_content_bundles()))
     ->fieldCondition('field_branch', 'target_id', $from_branch_id)
     ->range(0, 1)
     ->propertyOrderBy('nid')
@@ -212,8 +210,7 @@ function zariz_get_merge_conflicts($from_branch_id, $to_branch_id = NULL, $last_
   $query = new EntityFieldQuery();
   $result = $query
     ->entityCondition('entity_type', 'node')
-    // @todo: Remove hardcoding to article
-    ->entityCondition('bundle', 'article')
+    ->entityCondition('bundle', array_keys(zariz_get_group_content_bundles()))
     ->fieldCondition('field_branch', 'target_id', $to_branch_id)
     ->range(0, 1)
     ->propertyOrderBy('nid', 'DESC')
@@ -236,8 +233,7 @@ function zariz_get_merge_conflicts($from_branch_id, $to_branch_id = NULL, $last_
   $query = new EntityFieldQuery();
   $result = $query
     ->entityCondition('entity_type', 'node')
-    // @todo: Remove hardcoding to article
-    ->entityCondition('bundle', 'article')
+    ->entityCondition('bundle', array_keys(zariz_get_group_content_bundles()))
     ->fieldCondition('field_branch', 'target_id', $from_branch_id)
     ->execute();
 
@@ -257,8 +253,7 @@ function zariz_get_merge_conflicts($from_branch_id, $to_branch_id = NULL, $last_
   $query = new EntityFieldQuery();
   $result = $query
     ->entityCondition('entity_type', 'node')
-    // @todo: Remove hardcoding to article
-    ->entityCondition('bundle', 'article')
+    ->entityCondition('bundle', array_keys(zariz_get_group_content_bundles()))
     ->fieldCondition('field_branch', 'target_id', $to_branch_id)
     ->fieldCondition('field_uuid', 'value', $all_uuids, 'IN')
     ->propertyCondition('nid', $first_from_nid, '>')
@@ -323,8 +318,7 @@ function zariz_get_merge_status($branch_id) {
   $query = new EntityFieldQuery();
   $result = $query
     ->entityCondition('entity_type', 'node')
-    // @todo: Remove hardcoding to article
-    ->entityCondition('bundle', 'article')
+    ->entityCondition('bundle', array_keys(zariz_get_group_content_bundles()))
     ->fieldCondition('field_branch', 'target_id', $branch_id)
     ->range(0, 1)
     ->execute();
@@ -573,7 +567,7 @@ function zariz_get_page_list_by_snapshot($snapshot_id) {
   $query
     ->entityCondition('entity_type', 'node')
     // @todo: Remove hardcoding to article
-    ->entityCondition('bundle', 'article')
+    ->entityCondition('bundle', array_keys(zariz_get_group_content_bundles()))
     ->entityCondition('entity_id', $last_nid, '<=')
     ->fieldCondition('field_branch', 'target_id', $branch_id);
 
@@ -619,8 +613,7 @@ function zariz_get_deleted_node_ids($branch_nid) {
   $query = new EntityFieldQuery();
   $result = $query
     ->entityCondition('entity_type', 'node')
-    // @todo: Remove hardcoding to article
-    ->entityCondition('bundle', 'article')
+    ->entityCondition('bundle', array_keys(zariz_get_group_content_bundles()))
     ->fieldCondition('field_deleted', 'value', TRUE)
     ->fieldCondition(field_branch, 'target_id', $branch_ids, 'IN')
     ->execute();
@@ -642,8 +635,7 @@ function zariz_get_deleted_node_ids($branch_nid) {
   $query = new EntityFieldQuery();
   $result = $query
     ->entityCondition('entity_type', 'node')
-    // @todo: Remove hardcoding to article
-    ->entityCondition('bundle', 'article')
+    ->entityCondition('bundle', array_keys(zariz_get_group_content_bundles()))
     ->fieldCondition(field_branch, 'target_id', $branch_ids, 'IN')
     ->fieldCondition('field_uuid', 'value', array_keys($uuids), 'IN')
     ->execute();
@@ -729,8 +721,7 @@ function zariz_node_presave($node) {
   $query = new EntityFieldQuery();
   $result = $query
     ->entityCondition('entity_type', 'node')
-    // @todo: Remove hardcoding to article
-    ->entityCondition('bundle', 'article')
+    ->entityCondition('bundle', array_keys(zariz_get_group_content_bundles()))
     ->fieldCondition('field_uuid', 'value', $uuid)
     ->range(0, 1)
     ->execute();

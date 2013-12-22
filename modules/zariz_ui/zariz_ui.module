@@ -53,8 +53,7 @@ function zariz_ui_node_page_edit($node) {
     $query = new EntityFieldQuery();
     $result = $query
       ->entityCondition('entity_type', 'node')
-      // @todo: Remove hardcoding to article
-      ->entityCondition('bundle', 'article')
+      ->entityCondition('bundle', array_keys(zariz_get_group_content_bundles()))
       ->fieldCondition('field_branch', 'target_id', $branch_ids, 'IN')
       ->fieldCondition('field_uuid', 'value', $uuid)
       ->range(0, 1)
