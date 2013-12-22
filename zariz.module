@@ -1079,17 +1079,12 @@ function zariz_field_create_instance($instance) {
   $og_field['instance']['label'] = 'Branch';
   $og_field['instance']['required'] = TRUE;
   // Add entity reference prepopulate.
-  $og_field['instance']['settings'] = !empty($og_field['instance']['settings']) ? $og_field['instance']['settings'] : array();
-  $og_field['instance']['settings'] += array(
-    'behaviors' => array(
-      'prepopulate' => array(
-        'action' => 'redirect',
-        'fallback' => 'hide',
-        'og_context' => TRUE,
-        'action_on_edit' => TRUE,
-        'status' => TRUE,
-      ),
-    ),
+  $og_field['instance']['settings']['behaviors']['prepopulate'] = array(
+    'action' => 'redirect',
+    'fallback' => 'hide',
+    'og_context' => TRUE,
+    'action_on_edit' => TRUE,
+    'status' => TRUE,
   );
 
   og_create_field('field_branch', $entity_type, $bundle, $og_field);
@@ -1196,18 +1191,14 @@ function zariz_modules_enabled($modules) {
     $og_field['instance']['required'] = TRUE;
 
     // Add entity reference prepopulate.
-    $og_field['instance']['settings'] = !empty($og_field['instance']['settings']) ? $og_field['instance']['settings'] : array();
-    $og_field['instance']['settings'] += array(
-      'behaviors' => array(
-        'prepopulate' => array(
-          'action' => 'redirect',
-          'fallback' => 'hide',
-          'og_context' => TRUE,
-          'action_on_edit' => TRUE,
-          'status' => TRUE,
-        ),
-      ),
+    $og_field['instance']['settings']['behaviors']['prepopulate'] = array(
+      'action' => 'redirect',
+      'fallback' => 'hide',
+      'og_context' => TRUE,
+      'action_on_edit' => TRUE,
+      'status' => TRUE,
     );
+
 
     og_create_field('field_branch', 'node', 'article', $og_field);
   }
