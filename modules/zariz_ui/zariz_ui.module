@@ -174,20 +174,9 @@ function zariz_ui_page_build(&$page) {
     return;
   }
 
-  if (!$og_context = og_context()) {
-    if ($master_nid = variable_get('zariz_master_branch')) {
-      // Redirect to the master branch.
-      $purl_params = array(
-        'query' => drupal_get_query_parameters($_GET, array('q')),
-        'purl' => array(
-          'provider' => "og_purl|node",
-          'id' => $master_nid,
-        ),
-      );
-      unset($_GET['destination']);
-      purl_goto('<front>', $purl_params);
+  zariz_ui_purl_redirect_by_context();
 
-    }
+  if (!$og_context = og_context()) {
     // No OG context.
     return;
   }
@@ -286,4 +275,44 @@ function zariz_ui_toolbar_access() {
   }
 
   return TRUE;
+}
+
+/**
+ * Helper function; Redirect to correct PURL, by context or lack of one.
+ */
+function zariz_ui_purl_redirect_by_context() {
+  if (!$og_context = og_context()) {
+    if (!$master_nid = variable_get('zariz_master_branch')) {
+      return;
+    }
+    $id = $master_nid;
+  }
+  elseif ($node = menu_get_object()) {
+    if ($node->type != 'branch') {
+      return;
+    }
+
+    if ($node->nid == $og_context['gid']) {
+      // The viewed node, and the context are the same.
+      return;
+    }
+
+    // Redirect to branch, making sure we are in the correct PURL context.
+    $id = $node->nid;
+  }
+
+  if (empty($id)) {
+    return;
+  }
+
+  // Redirect to the master branch.
+  $purl_params = array(
+    'query' => drupal_get_query_parameters($_GET, array('q')),
+    'purl' => array(
+      'provider' => "og_purl|node",
+      'id' => $id,
+    ),
+  );
+  unset($_GET['destination']);
+  purl_goto('<front>', $purl_params);
 }
