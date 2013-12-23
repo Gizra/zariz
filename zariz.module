@@ -673,15 +673,25 @@ function zariz_node_presave($node) {
     return;
   }
 
+  $wrapper = entity_metadata_wrapper('node', $node);
   if ($node->type == 'branch') {
     _zariz_validate_branch_presave($node);
+
+    // Explicitly set the "field_branch_merged" to FALSE is it is NULL, to allow
+    // easier use of EntityFieldQuery that doesn't support querying over NULL
+    // values.
+    if (!$wrapper->field_branch_merged->value()) {
+      $wrapper->field_branch_merged->set(FALSE);
+    }
+
   }
 
   if (!og_is_group_content_type('node', $node->type)) {
     return;
   }
 
-  $wrapper = entity_metadata_wrapper('node', $node);
+  _zariz_validate_group_content_presave($node);
+
   if (!$uuid = $wrapper->field_uuid->value()) {
     // UUID doesn't exist.
     $uuid = md5(rand());
@@ -747,6 +757,32 @@ function _zariz_validate_branch_presave($node) {
 
   if ($result) {
     throw new Exception(format_string('Branch @name already exists.', array('@name' => $node->title)));
+  }
+}
+
+/**
+ * Helper function; Validate a group content can be created or updated.
+ *
+ * Group content cannot be changed if it belongs to a locked snapshot.
+ *
+ * @param $node
+ *   The node object.
+ *
+ * @throws Exception
+ *
+ * @see zariz_node_presave()
+ */
+function _zariz_validate_group_content_presave($node) {
+  if (empty($node->nid)) {
+    return;
+  }
+
+  $wrapper = entity_metadata_wrapper('node', $node);
+  $branch_id = $wrapper->field_branch->getIdentifier();
+
+  $snapshot = zariz_get_snapshot_from_branch($branch_id);
+  if ($snapshot->isLocked()) {
+    throw new Exception(format_string('Node @nid cannot be saved, as it belongs to a locked snapshot.', array($node->nid)));
   }
 }
 
@@ -829,7 +865,7 @@ function zariz_snapshot_set_last_entity_id($branch_id, $id, $field_name = 'field
  *   Optioanl; The parent snapshot object. If not set, function will try to get
  *   a previous parent from same branch.
  *
- * @return
+ * @return Snapshot
  *   The Snapshot entity object if found, or un-unsaved Snapshot entity if non
  *   found and $create set to TRUE, or NULL.
  *
@@ -867,6 +903,42 @@ function zariz_get_snapshot_from_branch($branch_id, $create = FALSE, $offset = 0
       'created' => time(),
     );
     return entity_create('snapshot', $values);
+  }
+
+  $sid = key($result['snapshot']);
+  return entity_load_single('snapshot', $sid);
+}
+
+/**
+ * Get the Snapshot an entity belongs to.
+ *
+ * @todo: Support other entities.
+ *
+ * @param $entity_type
+ *   The entity type.
+ * @param $entity
+ *   The entity object.
+ *
+ * @return Snapshot
+ *   The Snapshot object, or NULL if not found.
+ */
+function zariz_get_snapshot_from_content($entity_type, $entity) {
+  list($id) = entity_extract_ids($entity_type, $entity);
+
+  $wrapper = entity_metadata_wrapper($entity_type, $entity);
+  $branch_id = $wrapper->field_branch->getIdentifier();
+
+  $query = new EntityFieldQuery();
+  $result = $query
+    ->entityCondition('entity_type', 'snapshot')
+    ->fieldCondition('field_last_node', 'target_id', $id, '>=')
+    ->propertyCondition('nid', $branch_id)
+    ->range(0, 1)
+    ->propertyOrderBy('sid')
+    ->execute();
+
+  if (empty($result['snapshot'])) {
+    return;
   }
 
   $sid = key($result['snapshot']);
@@ -1076,6 +1148,40 @@ function zariz_query_zariz_alter(QueryAlterableInterface $query) {
 }
 
 /**
+ * Implements hook_menu_alter().
+ */
+function zariz_menu_alter(&$items) {
+  $items['node/%node/edit']['access callback'] = 'zariz_node_access_by_snapshot_state';
+}
+
+/**
+ * Menu access; Determine if user can update a node.
+ *
+ * @todo: Support delete.
+ *
+ * @param $op
+ *   The operation to preform. Possible values are "update" and "delete".
+ * @param $node
+ *   The node object.
+ *
+ * @return
+ *   TRUE if the operation may be performed, FALSE otherwise.
+ */
+function zariz_node_access_by_snapshot_state($op, $node) {
+  if (!node_access($op, $node)) {
+    return;
+  }
+
+  $bundles = array_keys(zariz_get_group_content_bundles());
+  if (!in_array($node->type, $bundles)) {
+    return TRUE;
+  }
+
+  $snapshot = zariz_get_snapshot_from_content('node', $node);
+  return !$snapshot->isLocked();
+}
+
+/**
  * Implements hook_node_info().
  *
  * Declare the Branch content type.
@@ -1116,6 +1222,7 @@ function zariz_field_create_instance($instance) {
   // @todo: Target bundle to "Branch".
   $og_field = og_fields_info(OG_AUDIENCE_FIELD);
   $og_field['field']['cardinality'] = 1;
+  $og_field['field']['settings']['handler'] = 'og_zariz';
   $og_field['instance']['label'] = 'Branch';
   $og_field['instance']['required'] = TRUE;
   // Add entity reference prepopulate.
@@ -1227,13 +1334,13 @@ function zariz_modules_enabled($modules) {
   if (in_array('zariz', $modules)) {
     $og_field = og_fields_info(OG_AUDIENCE_FIELD);
     $og_field['field']['cardinality'] = 1;
+    $og_field['field']['settings']['handler'] = 'og_zariz';
     $og_field['instance']['label'] = 'Branch';
     $og_field['instance']['required'] = TRUE;
-
     // Add entity reference prepopulate.
     $og_field['instance']['settings']['behaviors']['prepopulate'] = array(
-      'action' => 'redirect',
-      'fallback' => 'hide',
+      'action' => 'hide',
+      'fallback' => 'redirect',
       'og_context' => TRUE,
       'action_on_edit' => TRUE,
       'status' => TRUE,

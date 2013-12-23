@@ -38,7 +38,12 @@ function zariz_ui_menu() {
  * Allow creating a clone instead of editing.
  */
 function zariz_ui_menu_alter(&$items) {
+  // Node edit.
   $items['node/%node/edit']['page callback'] = 'zariz_ui_node_page_edit';
+
+  // Node clone.
+  $items['node/%node/clone/%clone_token']['type'] = MENU_NORMAL_ITEM;
+  unset($items['node/%node/clone/%clone_token']['type']['context']);
 }
 
 /**
@@ -235,7 +240,7 @@ function zariz_ui_page_build(&$page) {
     elseif ($status == ZARIZ_BRANCH_HAS_NO_CONTENT) {
       $items[] = t('No content');
     }
-    elseif ($status == ZARIZ_BRANCH_IS_MERGABLE) {
+    elseif ($status == ZARIZ_BRANCH_IS_MERGABLE && og_user_access($og_context['group_type'], $og_context['gid'], 'merge branch')) {
       // Create a merge link.
       $params = array(
         '@from_branch' => $wrapper->label(),
@@ -255,7 +260,7 @@ function zariz_ui_page_build(&$page) {
     if ($status != ZARIZ_BRANCH_IS_MASTER || !variable_get('zariz_ui_deny_crud_on_master', TRUE)) {
       // Add group content links.
       foreach (zariz_get_group_content_bundles() as $bundle => $bundle_label) {
-        if (!og_user_access('node', $branch_id, "create $bundle_label content")) {
+        if (!og_user_access('node', $branch_id, "create $bundle content")) {
           continue;
         }
 
@@ -281,10 +286,6 @@ function zariz_ui_toolbar_access() {
   }
 
   if ($og_context['group_type'] != 'node') {
-    return;
-  }
-
-  if (!og_user_access($og_context['group_type'], $og_context['gid'], 'merge branch')) {
     return;
   }
 
