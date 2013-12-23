@@ -230,7 +230,24 @@ function zariz_ui_page_build(&$page) {
   $branch_id = $og_context['gid'];
   $wrapper = entity_metadata_wrapper('node', $branch_id);
 
-  $items = array(l($wrapper->label(), '<front>'));
+  // Show a trail from the current branch, up to it's parents, e.g. live >> dev.
+  $branch_trail = array();
+  if ($branch_ids = zariz_get_branch_parents_ids($branch_id, FALSE)) {
+    foreach (node_load_multiple($branch_ids) as $parent_node) {
+      $modifier = array(
+        'provider' => "og_purl|node",
+        'id' => $parent_node->nid,
+      );
+
+      $purl = purl_load($modifier, 'path');
+      $options['purl']['disabled'] = TRUE;
+      $branch_trail[] = l($parent_node->title, $purl['value'], $options);
+    }
+  }
+
+  $branch_trail[] = l($wrapper->label(), '<front>');
+
+  $items = array(implode(" &raquo; ", $branch_trail));
 
   $status = zariz_get_merge_status($branch_id);
 
