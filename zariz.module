@@ -1333,7 +1333,7 @@ function zariz_modules_enabled($modules) {
   if (in_array('zariz', $modules)) {
     $og_field = og_fields_info(OG_AUDIENCE_FIELD);
     $og_field['field']['cardinality'] = 1;
-    $og_field['field']['settings']['handler'] = 'og_zariz';
+    $og_field['field']['settings']['handler'] = 'og';
     $og_field['instance']['label'] = 'Branch';
     $og_field['instance']['required'] = TRUE;
     // Add entity reference prepopulate.
