@@ -26,7 +26,7 @@ function zariz_ui_install() {
     'node' => -8,
   );
 
-  variable_get('og_context_providers_weight_group_context', $providers_weight);
+  variable_set('og_context_providers_weight_group_context', $providers_weight);
 }
 
 /**
