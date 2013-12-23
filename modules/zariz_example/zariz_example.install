@@ -1,0 +1,23 @@
+<?php
+
+/**
+ * @file
+ * Install, update, and uninstall functions for the Zariz example module.
+ */
+
+/**
+ * Implements hook_install().
+ *
+ * Create the "master" branch, named "live", and set the homepage to use our
+ * Panel page.
+ */
+function zariz_example_install() {
+  variable_set('site_frontpage', 'homepage');
+
+  if (variable_get('zariz_master_branch')) {
+    // A master branch already exists.
+    return;
+  }
+
+  zariz_create_branch('live');
+}
