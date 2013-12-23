@@ -1,0 +1,26 @@
+<?php
+/**
+ * @file
+ * Code for the Zariz example feature.
+ */
+
+include_once 'zariz_example.features.inc';
+
+/**
+ * @file
+ * Example file for the Zariz suite.
+ */
+
+/**
+ * Implements hook_migrate_api().
+ */
+function zariz_example_migrate_api() {
+  $api = array(
+    'api' => 2,
+    'migrations' => array(
+      'ZarizExampleArticleNodes' => array('class_name' => 'ZarizExampleArticleNodes'),
+    ),
+  );
+
+  return $api;
+}
