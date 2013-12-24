@@ -1148,7 +1148,10 @@ function zariz_node_access_by_snapshot_state($op, $node, $branch_id = NULL) {
 
   if (empty($branch_id)) {
     // Get branch ID from context.
-    $og_context = og_context();
+    if (!$og_context = og_context()) {
+      // In doubt, deny access.
+      return;
+    }
     $branch_id = $og_context['gid'];
   }
 
