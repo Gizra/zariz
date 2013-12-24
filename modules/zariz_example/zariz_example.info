@@ -6,6 +6,7 @@ dependencies[] = migrate_extras
 dependencies[] = migrate_ui
 dependencies[] = page_manager
 dependencies[] = panels
+dependencies[] = og_ui
 dependencies[] = views
 dependencies[] = views_content
 dependencies[] = zariz_ui
