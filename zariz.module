@@ -1147,6 +1147,9 @@ function zariz_query_zariz_alter(QueryAlterableInterface $query) {
     $query->addExpression('FIELD (ogm.gid, :args)', 'order_by_gid', array(':args' => $branch_ids));
     $query->orderBy('order_by_gid');
   }
+
+  // Group by entity ID to prevent duplication.
+  $query->groupBy("$node_alias.nid");
 }
 
 /**
