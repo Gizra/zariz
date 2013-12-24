@@ -56,4 +56,12 @@ $snpashot->isLocked()
 $snpashot->lock()
 ```
 
+### Typical permissions setup
+
+* In ``admin/people/permissions`` grant authenticated user ``Branch: Create new content``
+* In ``admin/config/group/permissions/node/branch`` grant non-member and member roles the following permissions:
+ * ``Merge branch``
+ * ``Create Article content``
+ * ``Edit any Article content``
+
 Developed by [Gizra](http://gizra.com)
