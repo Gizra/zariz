@@ -991,18 +991,22 @@ function zariz_clone_node_alter($node, $context) {
 
   // Check the context is a child of the existing branch.
   $wrapper = entity_metadata_wrapper('node', $node);
-  $new_branch_wrapper = entity_metadata_wrapper('node', $og_context['gid']);
 
-  if ($wrapper->field_branch->getIdentifier() == $og_context['gid']) {
+  $branch_id = $wrapper->field_branch->getIdentifier();
+
+  if ($branch_id == $og_context['gid']) {
     // We are cloning inside the same branch, which is the only way to update
     // an existing node.
     return;
   }
 
-  if ($new_branch_wrapper->field_parent_branch->getIdentifier() != $wrapper->field_branch->getIdentifier()) {
+  $branch_ids = zariz_get_branch_parents_ids($branch_id);
+
+  if (!in_array($branch_id, $branch_ids)) {
+    $new_branch = node_load($og_context['gid']);
     $params = array(
       '@origin' => $wrapper->field_branch->label(),
-      '@destination' => $new_branch_wrapper->label(),
+      '@destination' => $new_branch->title,
     );
     throw new Exception(format_string('Cannot clone content from branch @origin to @destination as it was not branched from it.', $params));
   }
@@ -1149,11 +1153,19 @@ function zariz_node_access_by_snapshot_state($op, $node, $branch_id = NULL) {
   if (empty($branch_id)) {
     // Get branch ID from context.
     if (!$og_context = og_context()) {
-      // In doubt, deny access.
-      return;
+      // If we still doesn't have context, we don't deny access, as otherwise,
+      // it will fail og_context(). Returning TRUE gere means this function we
+      // be re-called later to determine the actual access.
+      return TRUE;
     }
     $branch_id = $og_context['gid'];
   }
+  $master_nid = variable_get('zariz_master_branch');
+  if ($branch_id == $master_nid) {
+    // Always deny access on the "master" branch.
+    return;
+  }
+
 
   if ($snapshot->nid != $branch_id) {
     // The snapshot is not from the current branch, it means it is  not locked

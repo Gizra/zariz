@@ -233,6 +233,7 @@ function zariz_ui_page_build(&$page) {
   // Show a trail from the current branch, up to it's parents, e.g. live >> dev.
   $branch_trail = array();
   if ($branch_ids = zariz_get_branch_parents_ids($branch_id, FALSE)) {
+    $branch_ids = array_reverse(($branch_ids));
     foreach (node_load_multiple($branch_ids) as $parent_node) {
       $modifier = array(
         'provider' => "og_purl|node",
