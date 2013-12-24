@@ -1168,11 +1168,14 @@ function zariz_menu_alter(&$items) {
  *   The operation to preform. Possible values are "update" and "delete".
  * @param $node
  *   The node object.
+ * @param $branch_id
+ *   The branch ID of the current context. If empty the OG-context would be
+ *   used.
  *
  * @return
  *   TRUE if the operation may be performed, FALSE otherwise.
  */
-function zariz_node_access_by_snapshot_state($op, $node) {
+function zariz_node_access_by_snapshot_state($op, $node, $branch_id = NULL) {
   if (!node_access($op, $node)) {
     return;
   }
@@ -1183,6 +1186,19 @@ function zariz_node_access_by_snapshot_state($op, $node) {
   }
 
   $snapshot = zariz_get_snapshot_from_content('node', $node);
+
+  if (empty($branch_id)) {
+    // Get branch ID from context.
+    $og_context = og_context();
+    $branch_id = $og_context['gid'];
+  }
+
+  if ($snapshot->nid != $branch_id) {
+    // The snapshot is not from the current branch, it means it is  not locked
+    // in the current context.
+    return TRUE;
+  }
+
   return !$snapshot->isLocked();
 }
 

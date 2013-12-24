@@ -3,6 +3,7 @@ description = Content Revision Control.
 core = 7.x
 
 dependencies[] = og
+dependencies[] = og_context
 dependencies[] = replicate
 
 files[] = includes/zariz.snapshot.inc
