@@ -1011,47 +1011,6 @@ function zariz_clone_node_alter($node, $context) {
   $wrapper->field_branch->set($og_context['gid']);
 }
 
-
-/**
- * Get all nodes of a branch, even if they are not directly in the group.
- *
- * We query for the branch, and the parent branches.
- *
- * @param $branch_nid
- *   A branch node ID. If NULL, OG-context will be triggered to get the current
- *   branch.
- */
-function gznt_rn_get_branch_nodes($branch_nid = NULL) {
-  if (!$branch_nid && !$og_context = og_context()) {
-    throw new Exception('No branch node found to limit the entity field query.');
-  }
-  $args = array(
-    ':gids' => zariz_get_branch_parents_ids($branch_nid),
-  );
-
-  $query = '';
-  $query .= "SELECT n.nid, n.title, field_uuid.field_uuid_value FROM (select * from node ORDER BY nid DESC) as n ";
-  $query .= "INNER JOIN {field_data_field_uuid} field_uuid ON field_uuid.entity_id = n.nid ";
-  $query .= "INNER JOIN {og_membership} ogm ON ogm.esid = n.nid ";
-  $query .= "WHERE field_uuid.entity_type = 'node' ";
-
-  if ($deleted_nids = zariz_get_deleted_node_ids($branch_nid)) {
-    $args[':deleted'] = $deleted_nids;
-    $query.= "AND n.nid NOT IN (:deleted) ";
-  }
-
-  $query .= "AND ogm.entity_type = 'node' ";
-  $query .= "AND ogm.gid IN (:gids) ";
-  $query .= "GROUP BY field_uuid.field_uuid_value ";
-  $query .= "ORDER BY n.title ASC ";
-
-  $result = db_query($query, $args)
-    ->fetchAllAssoc('nid');
-
-  return $result;
-}
-
-
 /**
  * Implements hook_query_branch_context_alter().
  *
