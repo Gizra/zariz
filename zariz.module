@@ -637,17 +637,19 @@ function zariz_field_access($op, $field, $entity_type, $entity, $account) {
  *   The branch name.
  * @param $parent_branch
  *   Optional; The node object of the parent branch.
+ * @param $account
+ *   Optional; The user object to use as the node author.
  *
  * @return
  *   The branch node object.
  */
-function zariz_create_branch($branch_name, $parent_branch = NULL) {
+function zariz_create_branch($branch_name, $parent_branch = NULL, $account = NULL) {
   global $user;
 
   $values = array(
     'type' => 'branch',
     'title' => $branch_name,
-    'uid' => $user->uid,
+    'uid' => !empty($account) ? $account->uid : $user->uid,
   );
   $node = entity_create('node', $values);
 

@@ -19,5 +19,7 @@ function zariz_example_install() {
     return;
   }
 
-  zariz_create_branch('live');
+  // Create a brach using the user ID 1.
+  $account = user_load(1);
+  zariz_create_branch('live', NULL, $account);
 }
