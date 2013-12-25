@@ -304,6 +304,12 @@ function zariz_ui_page_build(&$page) {
  * Determine if user has access to the Zariz toolbar.
  */
 function zariz_ui_toolbar_access() {
+  global $user;
+
+  if (!$user->uid) {
+    return;
+  }
+
   if (!$og_context = og_context()) {
     return;
   }
