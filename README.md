@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/Gizra/zariz.png?branch=master)](https://travis-ci.org/Gizra/zariz)
 
-# Zariz Revision Control module suite for Drupal 7.x
+# Content Staging module suite for Drupal 7.x
 
 Zariz is a suite of Drupal modules and methodology, that models content (nodes)
 creation and editing similar to Git's branches, and allows generating static
