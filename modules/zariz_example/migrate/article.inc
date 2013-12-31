@@ -39,5 +39,10 @@ class ZarizExampleArticleNodes extends ZarizExampleMigration {
     $this
       ->addFieldMapping('field_branch')
       ->defaultValue($master_nid);
+
+    // No comments.
+    $this
+      ->addFieldMapping('comment')
+      ->defaultValue(COMMENT_NODE_CLOSED);
   }
 }

@@ -1,0 +1,40 @@
+<?php
+
+/**
+ * @file
+ * Provide functionality to allow static site generation from the master branch
+ */
+
+
+/**
+ * Process HTML.
+ *
+ * Wrap CSS <link> tags with Grunt's usemin blocks.
+ *
+ * @todo: Get the <!--[if] and remote files outside of the usemin block
+ */
+function zariz_static_process_html(&$variables) {
+  foreach ($variables['css'] as &$row) {
+    $row['preprocess'] = FALSE;
+  }
+
+  $output = array();
+  $output[] = '<!-- build:css(.tmp) styles/main.css -->';
+  $output[] = drupal_get_css($variables['css']);
+  $output[] = '<!-- endbuild -->';
+
+  $styles = implode("\r\n", $output);
+
+  // When calling drupal_get_css() it fires hook_css_alter(), so we need to
+  // replace some styles using string replacements.
+  $styles = str_replace(array('<style>', '</style>'), '', $styles);
+  $styles = preg_replace_callback('/@import url\((.*)\);/i', 'zariz_static_replace_style_import', $styles);
+  $variables['styles'] = $styles;
+}
+
+/**
+ * Preg replace callback; Replace style tags with a <link> tag.
+ */
+function zariz_static_replace_style_import($matches) {
+  return '<link type="text/css" rel="stylesheet" href=' . $matches[1] . ' media="all" />';
+}
