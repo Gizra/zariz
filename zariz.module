@@ -1353,4 +1353,3 @@ function zariz_views_api($module, $api) {
     return array('version' => 2);
   }
 }
-
