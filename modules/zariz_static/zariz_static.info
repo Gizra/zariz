@@ -1,0 +1,5 @@
+name = Zariz Static
+description = Provide functionality to allow static site generation from the master branch.
+core = 7.x
+
+dependencies[] = zariz
