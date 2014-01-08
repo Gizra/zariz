@@ -948,25 +948,6 @@ function zariz_get_snapshot_from_content($entity_type, $entity) {
 }
 
 /**
- * Implements hook_node_update().
- *
- * Safe guard against updating group content nodes.
- */
-function zariz_node_update($node) {
-  if (!og_is_group_content_type('node', $node->type)) {
-    // Not a group content.
-    return;
-  }
-
-  if (!empty($node->_allow_save)) {
-    // Allow forcing update (e.g. when updating the git hash).
-    return;
-  }
-
-  // throw new Exception(format_string('Node @title cannot be updated -  a new node should have been created instead.', array('@title' => $node->title)));
-}
-
-/**
  * Implements hook_node_delete().
  *
  * Safe guard against deleting any node.
@@ -1165,7 +1146,6 @@ function zariz_node_access_by_snapshot_state($op, $node, $branch_id = NULL) {
     // Always deny access on the "master" branch.
     return;
   }
-
 
   if ($snapshot->nid != $branch_id) {
     // The snapshot is not from the current branch, it means it is  not locked
