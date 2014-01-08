@@ -36,6 +36,7 @@ class ZarizExampleArticleNodes extends ZarizExampleMigration {
 
     // Add content to the master branch.
     $master_nid = variable_get('zariz_master_branch');
+
     $this
       ->addFieldMapping('field_branch')
       ->defaultValue($master_nid);
@@ -44,5 +45,10 @@ class ZarizExampleArticleNodes extends ZarizExampleMigration {
     $this
       ->addFieldMapping('comment')
       ->defaultValue(COMMENT_NODE_CLOSED);
+
+    // Author should be user ID 1.
+    $this
+      ->addFieldMapping('uid')
+      ->defaultValue(1);
   }
 }

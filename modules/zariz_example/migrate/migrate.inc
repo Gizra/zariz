@@ -38,11 +38,4 @@ abstract class ZarizExampleMigration extends Migration {
     $this->source = new MigrateSourceCSV(drupal_get_path('module', 'zariz_example') . '/migrate/csv/' . $this->entityType . '/' . $this->bundle . '.csv', $this->csvColumns, array('header_rows' => 1));
     $this->destination = new $class_name($this->bundle, array('text_format' => 'filtered_html'));
   }
-
-  /**
-   * Overrides Migration::prepareRow().
-   */
-  function prepareRow($row) {
-    $row->uid = 1;
-  }
 }
