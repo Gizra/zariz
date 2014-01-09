@@ -5,6 +5,41 @@
  * Provide functionality to allow static site generation from the master branch
  */
 
+/**
+ * Implements hook_menu().
+ */
+function zariz_static_menu() {
+  $items = array();
+
+  $items['zariz-pages'] = array(
+    'type' => MENU_CALLBACK,
+    'page callback' => 'zariz_static_get_pages_list_json',
+    'access arguments' => array('access content'),
+    'title' => 'Pages list',
+    'description' => 'Get pages list by a single or multiple snapshots.'
+  );
+
+  return $items;
+}
+
+
+/**
+ * Page callback; Return pages list by snapshot in JSON.
+ *
+ * @param Snapshot $snapshot
+ *   The Snapshot entity.
+ */
+function zariz_static_get_pages_list_json($branch_id = NULL) {
+  $branch_id = $branch_id ? $branch_id : variable_get('zariz_master_branch');
+  if (!$branch_id) {
+    // No branch ID.
+    return;
+  }
+
+  // Get the latest snapshot of the branch.
+  $snapshot = zariz_get_snapshot_from_branch($branch_id);
+  drupal_json_output(zariz_get_page_list_by_snapshot($snapshot));
+}
 
 /**
  * Process HTML.
