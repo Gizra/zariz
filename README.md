@@ -100,7 +100,7 @@ drush en zariz_ui
  * ``Edit any Article content``
 
 
-### Example moudle
+### Example module
 
 Enable ``zariz_example`` module and follow it's [README](https://github.com/Gizra/zariz/blob/7.x-1.x/modules/zariz_example/README.md)
 
