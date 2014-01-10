@@ -41,9 +41,7 @@ $snapshot = zariz_merge_branch($dev_node->nid);
 ### Working with Snapshots
 
 Snapshots holds information about the content of a branch at a certain time.
-This is done by simply holding the last node ID that existed. The last node ID
-can keep changing as long as the snapshot is not locked. Once the snapshot is
-locked it can no longer change.
+This is done by simply holding the last entity ID (e.g. node) that existed. The last entity ID can keep changing as long as the snapshot is not locked.
 
 ```php
 // Get the last snapshot from a branch.
@@ -52,13 +50,13 @@ $snapshot = zariz_get_snapshot_from_branch($live_node->nid);
 // Check if a snapshot is locked.
 $snpashot->isLocked()
 
-// Locking a snpashot.
+// Lock a snpashot.
 $snpashot->lock()
 ```
 
 ### Query alter
 
-Zariz can alter a query to the node table, to referlect the content in a certain branch.
+Zariz can alter a query to the node table, to reflect the content in a certain branch.
 The altering is opt-in, by settings the ``zariz`` query tag. For example:
 
 ```php
@@ -68,12 +66,14 @@ $result = $query
   ->entityCondition('bundle', 'article')
   // Set the Zariz query tag.
   ->addTag('zariz')
-  // Set explicetly the Branch ID. If this Metadata is ommitted, the
+  // Set explicitly the Branch ID. If this Metadata is omitted, the
   // OG-context will be used.
   ->addMetaData('zariz', array('branch_id' => $branch_id))
   ->propertyOrderBy('nid')
   ->execute();
 ```
+
+The same query tag can be also used in Views. For example in ``/admin/structure/views/view/branch_content/edit`` under ``Query settings`` => ``Query Tags`` notice that the ``zariz`` tag was added.
 
 ### Dependencies
 
@@ -102,6 +102,6 @@ drush en zariz_ui
 
 ### Example module
 
-Enable ``zariz_example`` module and follow it's [README](https://github.com/Gizra/zariz/blob/7.x-1.x/modules/zariz_example/README.md)
+Enable ``zariz_example`` module and follow its [README](https://github.com/Gizra/zariz/blob/7.x-1.x/modules/zariz_example/README.md)
 
 Developed by [Gizra](http://gizra.com)
