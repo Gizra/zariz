@@ -378,6 +378,15 @@ function zariz_ui_init() {
   if (!user_access('view zariz branches')) {
     // Disable PURL as user doesn't have access to see the branches.
     purl_disable(TRUE);
+
+    $master_nid = variable_get('zariz_master_branch');
+    $og_context = og_context();
+
+    if ($og_context['gid'] != $master_nid) {
+      // Return a page not found.
+      drupal_not_found();
+    }
+
   }
 }
 
