@@ -77,6 +77,19 @@ function zariz_ui_node_page_edit($node) {
 }
 
 /**
+ * Implements hook_permission().
+ */
+function zariz_ui_permission() {
+  $items = array();
+  $items['view zariz branches'] = array(
+    'title' => t('View Zariz branches'),
+    'description' => t('Determine if a user may see only the "master" branch.'),
+  );
+
+  return $items;
+}
+
+/**
  * Implements hook_og_permission().
  */
 function zariz_ui_og_permission() {
@@ -353,3 +366,26 @@ function zariz_ui_purl_redirect_by_context() {
   purl_goto('<front>', $purl_params);
 }
 
+function zariz_ui_init() {
+  $master_nid = variable_get('zariz_master_branch');
+  $node = node_load($master_nid);
+  og_context('node', $node);
+
+  if (!user_access('view zariz branches')) {
+    purl_disable(TRUE);
+  }
+}
+
+/**
+ * Implements hook_module_implements_alter().
+ *
+ * Make sure Zariz UI's init function it executed before OG-Purl.
+ */
+function zariz_ui_module_implements_alter(&$implementations, $hook) {
+  if ($hook != 'init') {
+    return;
+  }
+
+  unset($implementations['zariz_ui']);
+  $implementations = array('zariz_ui' => FALSE) + $implementations;
+}
