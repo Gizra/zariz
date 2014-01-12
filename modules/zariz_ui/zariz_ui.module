@@ -387,7 +387,11 @@ function zariz_ui_init() {
   $master_nid = variable_get('zariz_master_branch');
 
   $access = TRUE;
-  if (($og_context = og_context()) && $og_context['gid'] != $master_nid) {
+  if (!$og_context = og_context()) {
+    $node = node_load($master_nid);
+    og_context('node', $node);
+  }
+  elseif ($og_context['gid'] != $master_nid) {
     $access = FALSE;
   }
 
@@ -395,8 +399,6 @@ function zariz_ui_init() {
     // Return a page not found.
     drupal_not_found();
   }
-
-
 }
 
 /**
@@ -416,7 +418,6 @@ function zariz_ui_module_implements_alter(&$implementations, $hook) {
 
   unset($implementations['zariz_ui']);
   $implementations = array('zariz_ui' => FALSE) + $implementations;
-  dpm($implementations, $hook);
 }
 
 /**
