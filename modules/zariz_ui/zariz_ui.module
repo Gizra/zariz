@@ -375,10 +375,27 @@ function zariz_ui_purl_redirect_by_context() {
  * Implements hook_init().
  */
 function zariz_ui_init() {
-  if (!user_access('view zariz branches')) {
-    // Disable PURL as user doesn't have access to see the branches.
-    purl_disable(TRUE);
+  if (user_access('view zariz branches')) {
+    // Call PURL init, as we cancelled it in zariz_ui_module_implements_alter()
+    // so we could have control over who can see branches.
+    purl_init();
+    return;
   }
+  // Disable PURL as user doesn't have access to see the branches.
+  purl_disable(TRUE);
+
+  $master_nid = variable_get('zariz_master_branch');
+
+  $access = TRUE;
+  if (($og_context = og_context()) && $og_context['gid'] != $master_nid) {
+    $access = FALSE;
+  }
+
+  if (!$access) {
+    // Return a page not found.
+    drupal_not_found();
+  }
+
 
 }
 
@@ -386,12 +403,29 @@ function zariz_ui_init() {
  * Implements hook_module_implements_alter().
  *
  * Make sure Zariz UI's init function it executed before OG-Purl.
+ * Also, remove purl_init() as we want to invoke it ourself.
  */
 function zariz_ui_module_implements_alter(&$implementations, $hook) {
-  if ($hook != 'init') {
+  if (!in_array($hook, array('init', 'url_inbound_alter'))) {
     return;
+  }
+
+  if ($hook == 'init') {
+    unset($implementations['purl']);
   }
 
   unset($implementations['zariz_ui']);
   $implementations = array('zariz_ui' => FALSE) + $implementations;
+  dpm($implementations, $hook);
+}
+
+/**
+ * Implements hook_url_alter_inbound().
+ *
+ * Disable PURL.
+ *
+ * @see purl_url_inbound_alter()
+ */
+function zariz_ui_url_inbound_alter(&$path, $original_path, $path_language) {
+  purl_inited(FALSE);
 }
