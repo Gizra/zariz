@@ -354,6 +354,11 @@ function zariz_ui_purl_redirect_by_context() {
     return;
   }
 
+  if (!user_access('view zariz branches')) {
+    // User has access only to the "master" branch.
+    return;
+  }
+
   // Redirect to the master branch.
   $purl_params = array(
     'query' => drupal_get_query_parameters($_GET, array('q')),
@@ -366,12 +371,12 @@ function zariz_ui_purl_redirect_by_context() {
   purl_goto('<front>', $purl_params);
 }
 
+/**
+ * Implements hook_init().
+ */
 function zariz_ui_init() {
-  $master_nid = variable_get('zariz_master_branch');
-  $node = node_load($master_nid);
-  og_context('node', $node);
-
   if (!user_access('view zariz branches')) {
+    // Disable PURL as user doesn't have access to see the branches.
     purl_disable(TRUE);
   }
 }
