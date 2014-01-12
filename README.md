@@ -79,7 +79,7 @@ $result = $query
 
 Unless stated otherwise, use latest release version is required.
 
-* [Entity reference prepopualte](https://drupal.org/project/entityreference_prepopulate) 
+* [Entity reference prepopualte](https://drupal.org/project/entityreference_prepopulate)
 * [Organic groups](https://drupal.org/project/og) (Dev version until [this](https://drupal.org/node/2162861) bug in Drupal.org release managment is fixed)
 * [Replicate](https://drupal.org/project/replicate)
 * [Node clone](https://drupal.org/project/node_clone)
@@ -93,7 +93,9 @@ drush en zariz_ui
 
 ### Typical permissions setup
 
-* In ``admin/people/permissions`` grant authenticated user ``Branch: Create new content``
+* In ``admin/people/permissions`` grant authenticated user:
+ * ``Branch: Create new content``
+ * ``View Zariz branches``
 * In ``admin/config/group/permissions/node/branch`` grant non-member and member roles the following permissions:
  * ``Merge branch``
  * ``Create Article content``
