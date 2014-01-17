@@ -1334,3 +1334,87 @@ function zariz_views_api($module, $api) {
   }
 }
 
+
+/**
+ * Implements hook_entity_prepare_view().
+ */
+function zariz_entity_prepare_view($entities, $type, $langcode) {
+  foreach ($entities as &$entity) {
+    zariz_adjust_entity_reference_fields($type, $entity);
+  }
+
+}
+
+
+/**
+ * Change entity reference according to the context.
+ *
+ * @todo: Process only field with correct settings.
+ *
+ * @param $entity_type
+ *   The entity type.
+ * @param $entity
+ *   The entity object.
+ * @param Snapshot $snapshot
+ *   (optional) The Snapshot entity to adjust by. If NULL the current context
+ *   will be used.
+ */
+function zariz_adjust_entity_reference_fields($entity_type, $entity, Snapshot $snapshot = NULL) {
+  if (!in_array($entity_type, array('node'))) {
+    // @todo: Improve.
+    return;
+  }
+
+  list(,, $bundle) = entity_extract_ids($entity_type, $entity);
+
+  if (!og_is_group_content_type($entity_type, $bundle)) {
+    // Not a group content.
+    return;
+  }
+
+
+  if (!$snapshot) {
+    $og_context = og_context();
+    $snapshot = zariz_get_snapshot_from_branch($og_context['gid']);
+  }
+
+  $field_names = array();
+
+  foreach (field_info_instances($entity_type, $bundle) as $field_name => $instance) {
+    if (og_is_group_audience_field($field_name)) {
+      // Field is an OG group audience field.
+      continue;
+    }
+    $field = field_info_field($field_name);
+    if ($field['type'] != 'entityreference') {
+      // Field is not entity reference
+      continue;
+    }
+
+    $field_names[$field_name] = $field['cardinality'];
+  }
+
+  if (!$field_names) {
+    // No fields found.
+    return;
+  }
+
+  $wrapper = entity_metadata_wrapper($entity_type, $entity);
+
+  $uuids = array();
+  foreach ($field_names as $field_name => $cardinality) {
+    if ($cardinality == 1) {
+      $id = $wrapper->{$field_name}->getIdentifier();
+      $uuids[$id] = $wrapper->{$field_name}->field_uuid->value();
+    }
+    else {
+      foreach ($wrapper->{$field_name} as $sub_wrapper) {
+        $id = $sub_wrapper->getIdentifier();
+        $uuids[$id] = $sub_wrapper->field_uuid->value();
+      }
+    }
+
+  }
+
+  dpm($uuids);
+}
