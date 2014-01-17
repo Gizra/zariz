@@ -1351,6 +1351,8 @@ function zariz_entity_prepare_view($entities, $type, $langcode) {
  *
  * @todo: Process only field with correct settings.
  *
+ * @todo: Invoke before entityreference_field_formatter_prepare_view().
+ *
  * @param $entity_type
  *   The entity type.
  * @param $entity
@@ -1371,7 +1373,6 @@ function zariz_adjust_entity_reference_fields($entity_type, $entity, Snapshot $s
     // Not a group content.
     return;
   }
-
 
   if (!$snapshot) {
     $og_context = og_context();
