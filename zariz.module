@@ -1405,8 +1405,9 @@ function zariz_adjust_entity_reference_fields($entity_type, $entity, Snapshot $s
     $uuids = array();
     $cardinality = $field['cardinality'];
     if ($cardinality == 1) {
-      $id = $wrapper->{$field_name}->getIdentifier();
-      $uuids[$id] = $wrapper->{$field_name}->field_uuid->value();
+      if ($id = $wrapper->{$field_name}->getIdentifier()) {
+        $uuids[$id] = $wrapper->{$field_name}->field_uuid->value();
+      }
     }
     else {
       foreach ($wrapper->{$field_name} as $sub_wrapper) {
