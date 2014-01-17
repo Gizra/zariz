@@ -1355,11 +1355,11 @@ function zariz_entity_prepare_view($entities, $type, $langcode) {
  *   The entity type.
  * @param $entity
  *   The entity object.
- * @param Snapshot $snapshot
- *   (optional) The Snapshot entity to adjust by. If NULL the current context
+ * @param $branch_id
+ *   (optional) The branch ID. If NULL the current context
  *   will be used.
  */
-function zariz_adjust_entity_reference_fields($entity_type, $entity, Snapshot $snapshot = NULL) {
+function zariz_adjust_entity_reference_fields($entity_type, $entity, $branch_id = NULL) {
   if (!in_array($entity_type, array('node'))) {
     // @todo: Improve.
     return;
@@ -1372,10 +1372,9 @@ function zariz_adjust_entity_reference_fields($entity_type, $entity, Snapshot $s
     return;
   }
 
-  if (!$snapshot) {
+  if (!$branch_id) {
     $og_context = og_context();
     $branch_id = $og_context['gid'];
-    $snapshot = zariz_get_snapshot_from_branch($branch_id);
   }
 
   $field_names = array();
@@ -1426,9 +1425,7 @@ function zariz_adjust_entity_reference_fields($entity_type, $entity, Snapshot $s
       ->entityCondition('entity_type', 'node')
       ->entityCondition('bundle', array_keys(zariz_get_group_content_bundles()))
       ->addTag('zariz')
-      // Set explicitly the Branch ID. If this Metadata is omitted, the
-      // OG-context will be used.
-      // @todo: Pass the snapshot ID.
+      // Set explicitly the Branch ID.
       ->addMetaData('zariz', array('branch_id' => $branch_id))
       ->fieldCondition('field_uuid', 'value', $uuids, 'IN')
       ->propertyOrderBy('nid')
