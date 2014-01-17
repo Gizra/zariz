@@ -1,0 +1,43 @@
+<?php
+
+/**
+ * @file
+ * Contains ZarizEntityReferenceTestCase
+ */
+
+class ZarizEntityReferenceTestCase extends DrupalWebTestCase {
+
+  public static function getInfo() {
+    return array(
+      'name' => 'Entity Reference',
+      'description' => 'Test adjusting entity reference values.',
+      'group' => 'Zariz',
+    );
+  }
+
+  function setUp() {
+    parent::setUp('zariz');
+    $og_field = og_fields_info(OG_AUDIENCE_FIELD);
+    $og_field['field']['cardinality'] = 1;
+    og_create_field('field_branch', 'node', 'article', $og_field);
+  }
+
+  /**
+   * Test adjusting entity reference values.
+   */
+  function testAdjust() {
+    $branch_node = zariz_create_branch('master');
+    $branch_id = $branch_node->nid;
+
+    // Add a group content.
+    $values = array(
+      'type' => 'article',
+      'title' => $this->randomName(),
+    );
+    $values['field_branch'][LANGUAGE_NONE][0]['target_id'] = $branch_id;
+    $node1 = $this->drupalCreateNode($values);
+
+    // Add another group content.
+    $node2 = $this->drupalCreateNode($values);
+  }
+}
