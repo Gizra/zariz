@@ -1375,7 +1375,8 @@ function zariz_adjust_entity_reference_fields($entity_type, $entity, Snapshot $s
 
   if (!$snapshot) {
     $og_context = og_context();
-    $snapshot = zariz_get_snapshot_from_branch($og_context['gid']);
+    $branch_id = $og_context['gid'];
+    $snapshot = zariz_get_snapshot_from_branch($branch_id);
   }
 
   $field_names = array();
@@ -1391,7 +1392,7 @@ function zariz_adjust_entity_reference_fields($entity_type, $entity, Snapshot $s
       continue;
     }
 
-    $field_names[$field_name] = $field['cardinality'];
+    $field_names[$field_name] = $field;
   }
 
   if (!$field_names) {
@@ -1401,8 +1402,9 @@ function zariz_adjust_entity_reference_fields($entity_type, $entity, Snapshot $s
 
   $wrapper = entity_metadata_wrapper($entity_type, $entity);
 
-  $uuids = array();
-  foreach ($field_names as $field_name => $cardinality) {
+  foreach ($field_names as $field_name => $field) {
+    $uuids = array();
+    $cardinality = $field['cardinality'];
     if ($cardinality == 1) {
       $id = $wrapper->{$field_name}->getIdentifier();
       $uuids[$id] = $wrapper->{$field_name}->field_uuid->value();
@@ -1414,7 +1416,42 @@ function zariz_adjust_entity_reference_fields($entity_type, $entity, Snapshot $s
       }
     }
 
+    if (!$uuids) {
+      // No values in the field.
+      continue;
+    }
+
+    $query = new EntityFieldQuery();
+    $result = $query
+      ->entityCondition('entity_type', 'node')
+      ->entityCondition('bundle', array_keys(zariz_get_group_content_bundles()))
+      ->addTag('zariz')
+      // Set explicitly the Branch ID. If this Metadata is omitted, the
+      // OG-context will be used.
+      // @todo: Pass the snapshot ID.
+      ->addMetaData('zariz', array('branch_id' => $branch_id))
+      ->fieldCondition('field_uuid', 'value', $uuids, 'IN')
+      ->propertyOrderBy('nid')
+      ->execute();
+
+    $target_type = $field['settings']['target_type'];
+    foreach (entity_load($target_type, array_keys($result[$target_type])) as $entity_item) {
+      $item_wrapper = entity_metadata_wrapper($target_type, $entity_item);
+      $uuid = $item_wrapper->field_uuid->value();
+      $new_ids[$uuid] = $item_wrapper->getIdentifier();
+    }
+
+    // Sort the new IDs by the old IDs.
+    $new_values = array();
+    foreach ($uuids as $uuid) {
+      $new_values[] = $new_ids[$uuid];
+    }
+
+    if ($cardinality == 1) {
+      $new_values = reset($new_values);
+    }
+
+    $wrapper->{$field_name}->set($new_values);
   }
 
-  dpm($uuids);
 }
