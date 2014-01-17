@@ -1351,8 +1351,6 @@ function zariz_entity_prepare_view($entities, $type, $langcode) {
  *
  * @todo: Process only field with correct settings.
  *
- * @todo: Invoke before entityreference_field_formatter_prepare_view().
- *
  * @param $entity_type
  *   The entity type.
  * @param $entity
@@ -1439,7 +1437,15 @@ function zariz_adjust_entity_reference_fields($entity_type, $entity, Snapshot $s
     foreach (entity_load($target_type, array_keys($result[$target_type])) as $entity_item) {
       $item_wrapper = entity_metadata_wrapper($target_type, $entity_item);
       $uuid = $item_wrapper->field_uuid->value();
-      $new_ids[$uuid] = $item_wrapper->getIdentifier();
+
+      // Re-add the "access" and "entity" properties that were added in
+      // entityreference_field_formatter_prepare_view(), which was executed
+      // before this function.
+      $new_ids[$uuid] = array(
+        'target_id' => $item_wrapper->getIdentifier(),
+        'entity' => $entity_item,
+        'access' => entity_access('view', $target_type, $entity_item),
+      );
     }
 
     // Sort the new IDs by the old IDs.
@@ -1448,11 +1454,8 @@ function zariz_adjust_entity_reference_fields($entity_type, $entity, Snapshot $s
       $new_values[] = $new_ids[$uuid];
     }
 
-    if ($cardinality == 1) {
-      $new_values = reset($new_values);
-    }
-
-    $wrapper->{$field_name}->set($new_values);
+    // $todo: get the field's langcode.
+    $entity->{$field_name}[LANGUAGE_NONE] = $new_values;
   }
 
 }
