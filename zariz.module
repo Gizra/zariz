@@ -61,6 +61,20 @@ function zariz_entity_info() {
 }
 
 /**
+ * Implements hook_entity_info_alter().
+ *
+ * Add "last id field name" property to determine which entities should be
+ * tracked by the Snapshot entity.
+ */
+function zariz_entity_info_alter(&$entity_info) {
+  $entity_info['node']['zariz'] = array(
+    'last id field name' => 'field_last_node',
+  );
+}
+
+
+
+/**
  * Merge the content of a snapshot into another branch.
  *
  * We iterate over the content in the "merge from" branch, and clone it into the
@@ -1370,8 +1384,7 @@ function zariz_entity_prepare_view($entities, $type, $langcode) {
  *   will be used.
  */
 function zariz_adjust_entity_reference_fields($entity_type, $entity, $branch_id = NULL) {
-  if (!in_array($entity_type, array('node'))) {
-    // @todo: Improve.
+  if (empty($entity_info['zariz'])) {
     return;
   }
 
@@ -1453,6 +1466,9 @@ function zariz_adjust_entity_reference_fields($entity_type, $entity, $branch_id 
         'target_id' => $item_wrapper->getIdentifier(),
         'entity' => $entity_item,
         'access' => entity_access('view', $target_type, $entity_item),
+        // Since we already have the UUID, we add it here, so other may use it
+        // for example in a custom formatter.
+        'uuid' => $uuid,
       );
     }
 
