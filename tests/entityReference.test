@@ -25,7 +25,7 @@ class ZarizEntityReferenceTestCase extends DrupalWebTestCase {
   /**
    * Test adjusting entity reference values.
    */
-  function __testAdjustValues() {
+  function testAdjustValues() {
     $live_node = zariz_create_branch('live');
     $branch_id = $live_node->nid;
 
@@ -97,12 +97,13 @@ class ZarizEntityReferenceTestCase extends DrupalWebTestCase {
     $values['field_zariz_node'][LANGUAGE_NONE][1]['target_id'] = $node2->nid;
     $node3 = $this->drupalCreateNode($values);
 
-    debug($node3->field_zariz_node);
-
     $this->assertEqual($node3->field_zariz_node[LANGUAGE_NONE][0]['uuid'], $node1->field_uuid[LANGUAGE_NONE][0]['value']);
-    $this->assertEqual($node3->field_zariz_node[LANGUAGE_NONE][1]['uuid'], $node1->field_uuid[LANGUAGE_NONE][0]['value']);
+    $this->assertEqual($node3->field_zariz_node[LANGUAGE_NONE][1]['uuid'], $node2->field_uuid[LANGUAGE_NONE][0]['value']);
 
     $node3 = node_load($node3->nid);
-    debug($node3->field_zariz_node);
+
+    // Assert UUID is shown after re-loading entity.
+    $this->assertEqual($node3->field_zariz_node[LANGUAGE_NONE][0]['uuid'], $node1->field_uuid[LANGUAGE_NONE][0]['value']);
+    $this->assertEqual($node3->field_zariz_node[LANGUAGE_NONE][1]['uuid'], $node2->field_uuid[LANGUAGE_NONE][0]['value']);
   }
 }
