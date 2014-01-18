@@ -11,7 +11,7 @@ class ZarizEntityReferenceBehavior extends EntityReference_BehaviorHandler_Abstr
    * Overrides EntityReference_BehaviorHandler_Abstract::access().
    */
   public function access($field, $instance) {
-    return TRUE;
+    return $field['settings']['handler'] == 'zariz' || strpos($field['settings']['handler'], 'zariz_') === 0;
   }
 
   /**

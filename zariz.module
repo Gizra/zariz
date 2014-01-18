@@ -1383,7 +1383,9 @@ function zariz_adjust_entity_reference_fields($entity_type, $entity, $branch_id 
   }
 
   if (!$branch_id) {
-    $og_context = og_context();
+    if ($og_context = og_context()) {
+      return;
+    }
     $branch_id = $og_context['gid'];
   }
 
