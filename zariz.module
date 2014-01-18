@@ -1336,6 +1336,16 @@ function zariz_views_api($module, $api) {
 
 
 /**
+ * Implements hook_ctools_plugin_directory().
+ */
+function zariz_ctools_plugin_directory($module, $plugin) {
+  if ($module == 'entityreference') {
+    return $module . '/' . $plugin;
+  }
+}
+
+
+/**
  * Implements hook_entity_prepare_view().
  */
 function zariz_entity_prepare_view($entities, $type, $langcode) {
