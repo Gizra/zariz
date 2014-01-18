@@ -44,7 +44,7 @@ class ZarizEntityReferenceTestCase extends DrupalWebTestCase {
     // Assert referenced ID didn't change in a the same branch.
     $node2_adjusted = clone $node2;
     zariz_adjust_entity_reference_fields('node', $node2_adjusted, NULL, $branch_id);
-    $this->assetEqual($node2->field_zariz_node[LANGUAGE_NONE][0]['target_id'], $node1->nid);
+    $this->assertEqual($node2->field_zariz_node[LANGUAGE_NONE][0]['target_id'], $node1->nid);
 
     // Create another branch.
     $dev_node = zariz_create_branch('dev', $live_node);
@@ -52,7 +52,7 @@ class ZarizEntityReferenceTestCase extends DrupalWebTestCase {
     // Assert referenced ID didn't change in a new branch.
     $node2_adjusted = clone $node2;
     zariz_adjust_entity_reference_fields('node', $node2_adjusted, NULL, $dev_node->nid);
-    $this->assetEqual($node2->field_zariz_node[LANGUAGE_NONE][0]['target_id'], $node1->nid);
+    $this->assertEqual($node2->field_zariz_node[LANGUAGE_NONE][0]['target_id'], $node1->nid);
 
     // "Edit" node1 in another branch.
     $dev_node = zariz_create_branch('dev', $live_node);
@@ -64,7 +64,7 @@ class ZarizEntityReferenceTestCase extends DrupalWebTestCase {
     // Assert referenced ID changed in the new branch.
     $node2_adjusted = clone $node2;
     zariz_adjust_entity_reference_fields('node', $node2_adjusted, NULL, $dev_node->nid);
-    $this->assetEqual($node2->field_zariz_node[LANGUAGE_NONE][0]['target_id'], $node3->nid);
+    $this->assertEqual($node2->field_zariz_node[LANGUAGE_NONE][0]['target_id'], $node3->nid);
 
     // Merge the dev branch to the live branch.
     $snapshot = zariz_merge_branch($dev_node->nid);
@@ -73,7 +73,7 @@ class ZarizEntityReferenceTestCase extends DrupalWebTestCase {
     // referenced.
     $node2_adjusted = clone $node2;
     zariz_adjust_entity_reference_fields('node', $node2_adjusted, NULL, $dev_node->nid);
-    $this->assetEqual($node2->field_zariz_node[LANGUAGE_NONE][0]['target_id'], $snapshot->field_last_node[LANGUAGE_NONE][0]['target_id']);
+    $this->assertEqual($node2->field_zariz_node[LANGUAGE_NONE][0]['target_id'], $snapshot->field_last_node[LANGUAGE_NONE][0]['target_id']);
 
   }
 
