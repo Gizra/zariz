@@ -1416,7 +1416,7 @@ function zariz_entity_prepare_view($entities, $type, $langcode) {
  *   (optional) The branch ID. If NULL the current context
  *   will be used.
  */
-function zariz_adjust_entity_reference_fields($entity_type, $entity, $langcode, $branch_id = NULL) {
+function zariz_adjust_entity_reference_fields($entity_type, $entity, $langcode = NULL, $branch_id = NULL) {
   if (empty($entity_info['zariz'])) {
     return;
   }
@@ -1511,7 +1511,8 @@ function zariz_adjust_entity_reference_fields($entity_type, $entity, $langcode, 
       $new_values[] = $new_ids[$uuid];
     }
 
-    $entity->{$field_name}[$langcode] = $new_values;
+    // @todo: Use the $langcode?
+    $entity->{$field_name}[LANGUAGE_NONE] = $new_values;
   }
 
 }
