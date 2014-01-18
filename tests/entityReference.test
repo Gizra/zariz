@@ -10,7 +10,7 @@ class ZarizEntityReferenceTestCase extends DrupalWebTestCase {
   public static function getInfo() {
     return array(
       'name' => 'Entity Reference',
-      'description' => 'Test adjusting entity reference values.',
+      'description' => 'Test entity reference integration with Zariz.',
       'group' => 'Zariz',
     );
   }
@@ -25,7 +25,7 @@ class ZarizEntityReferenceTestCase extends DrupalWebTestCase {
   /**
    * Test adjusting entity reference values.
    */
-  function testAdjust() {
+  function testAdjustValues() {
     $branch_node = zariz_create_branch('master');
     $branch_id = $branch_node->nid;
 
@@ -39,5 +39,12 @@ class ZarizEntityReferenceTestCase extends DrupalWebTestCase {
 
     // Add another group content.
     $node2 = $this->drupalCreateNode($values);
+  }
+
+  /**
+   * Test UUID values are added along with the entity ID reference.
+   */
+  function testUuid() {
+
   }
 }

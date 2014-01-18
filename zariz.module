@@ -1311,6 +1311,39 @@ function zariz_field_create_instance($instance) {
     );
     field_create_instance($instance);
   }
+
+  // @todo: Add option to add this field, as it is not mandatory?
+  // Add "Content" - a node reference field.
+  // We prefix the field name with "zariz" to indicate its a reference field
+  // that is aware to the context.
+  $field_name = 'field_zariz_node';
+  if (!field_info_field($field_name)) {
+    $field = array(
+      'entity_types' => array(),
+      'settings' => array(
+        // The handler is "zariz".
+        'handler' => 'zariz',
+        'target_type' => 'node',
+        'handler_settings' => array(
+          'target_bundles' => array(),
+        ),
+      ),
+      'field_name' => $field_name,
+      'type' => 'entityreference',
+      'cardinality' => FIELD_CARDINALITY_UNLIMITED,
+    );
+    field_create_field($field);
+  }
+
+  if (!field_info_instance($entity_type, $field_name, $bundle)) {
+    $instance = array(
+      'entity_type' => $entity_type,
+      'field_name' => $field_name,
+      'bundle' => $bundle,
+      'label' => 'Content',
+    );
+    field_create_instance($instance);
+  }
 }
 
 /**
