@@ -37,8 +37,6 @@ class ZarizSelectionHandler extends EntityReference_SelectionHandler_Generic {
     $query = $handler->buildEntityFieldQuery($match, $match_operator);
 
     $query->addTag('zariz');
-
-
     return $query;
   }
 }
