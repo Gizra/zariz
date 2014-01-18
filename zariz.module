@@ -1041,6 +1041,7 @@ function zariz_query_zariz_alter(QueryAlterableInterface $query) {
 
   $snapshot = zariz_get_snapshot_from_branch($branch_id);
 
+  $node_alias = FALSE;
   $tables = &$query->getTables();
   foreach ($tables as $alias => $info) {
     if ($info['table'] == 'node') {
