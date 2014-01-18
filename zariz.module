@@ -1342,6 +1342,17 @@ function zariz_field_create_instance($instance) {
       'field_name' => $field_name,
       'bundle' => $bundle,
       'label' => 'Content',
+      'widget' => array(
+        'module' => 'options',
+        'type' => 'options_select',
+      ),
+      'settings' => array(
+        'behaviors' => array(
+          'zariz' => array(
+            'status' => TRUE,
+          )
+        ),
+      )
     );
     field_create_instance($instance);
   }
@@ -1522,6 +1533,10 @@ function zariz_adjust_entity_reference_fields($entity_type, $entity, $langcode =
 
 /**
  * Implements hook_field_widget_form_alter().
+ *
+ * Re-set the #default_value property based on the UUID.
+ *
+ * @todo: Currently supports only the select list widget.
  */
 function zariz_field_widget_form_alter(&$element, &$form_state, $context) {
   $field = $context['field'];
@@ -1541,7 +1556,7 @@ function zariz_field_widget_form_alter(&$element, &$form_state, $context) {
   }
 
   if (!$items = $context['items']) {
-    // No exsiting items in the field.
+    // No existing items in the field.
     return;
   }
 
@@ -1568,7 +1583,4 @@ function zariz_field_widget_form_alter(&$element, &$form_state, $context) {
     ->execute();
 
   $element['#default_value'] = array_keys($result[$target_type]);
-
-  dpm($element);
-  dpm($context);
 }
