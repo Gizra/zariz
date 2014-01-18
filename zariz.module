@@ -1327,6 +1327,11 @@ function zariz_field_create_instance($instance) {
         'target_type' => 'node',
         'handler_settings' => array(
           'target_bundles' => array(),
+          'behaviors' => array(
+            'zariz' => array(
+              'status' => TRUE,
+            ),
+          ),
         ),
       ),
       'field_name' => $field_name,
@@ -1346,13 +1351,6 @@ function zariz_field_create_instance($instance) {
         'module' => 'options',
         'type' => 'options_select',
       ),
-      'settings' => array(
-        'behaviors' => array(
-          'zariz' => array(
-            'status' => TRUE,
-          )
-        ),
-      )
     );
     field_create_instance($instance);
   }
