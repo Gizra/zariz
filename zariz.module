@@ -1364,7 +1364,7 @@ function zariz_ctools_plugin_directory($module, $plugin) {
  */
 function zariz_entity_prepare_view($entities, $type, $langcode) {
   foreach ($entities as &$entity) {
-    zariz_adjust_entity_reference_fields($type, $entity);
+    zariz_adjust_entity_reference_fields($type, $entity, $langcode);
   }
 
 }
@@ -1373,17 +1373,17 @@ function zariz_entity_prepare_view($entities, $type, $langcode) {
 /**
  * Change entity reference according to the context.
  *
- * @todo: Process only field with correct settings.
- *
  * @param $entity_type
  *   The entity type.
  * @param $entity
- *   The entity object.
+ *   The entity object passed by reference.
+ * @param $langcode
+ *   The language code of the field.
  * @param $branch_id
  *   (optional) The branch ID. If NULL the current context
  *   will be used.
  */
-function zariz_adjust_entity_reference_fields($entity_type, $entity, $branch_id = NULL) {
+function zariz_adjust_entity_reference_fields($entity_type, $entity, $langcode, $branch_id = NULL) {
   if (empty($entity_info['zariz'])) {
     return;
   }
@@ -1478,8 +1478,7 @@ function zariz_adjust_entity_reference_fields($entity_type, $entity, $branch_id 
       $new_values[] = $new_ids[$uuid];
     }
 
-    // $todo: get the field's langcode.
-    $entity->{$field_name}[LANGUAGE_NONE] = $new_values;
+    $entity->{$field_name}[$langcode] = $new_values;
   }
 
 }
