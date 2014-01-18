@@ -1445,9 +1445,11 @@ function zariz_adjust_entity_reference_fields($entity_type, $entity, $langcode =
       continue;
     }
 
-    if ($field['settings']['handler'] == 'zariz' || strpos($field['settings']['handler'], 'zariz_') === 0) {
-      $field_names[$field_name] = $field;
+    if ($field['settings']['handler'] != 'zariz' && strpos($field['settings']['handler'], 'zariz_') !== 0) {
+      continue;
     }
+
+    $field_names[$field_name] = $field;
   }
 
   if (!$field_names) {
@@ -1515,5 +1517,57 @@ function zariz_adjust_entity_reference_fields($entity_type, $entity, $langcode =
     // @todo: Use the $langcode?
     $entity->{$field_name}[LANGUAGE_NONE] = $new_values;
   }
+}
 
+/**
+ * Implements hook_field_widget_form_alter().
+ */
+function zariz_field_widget_form_alter(&$element, &$form_state, $context) {
+  $field = $context['field'];
+  if ($field['type'] != 'entityreference') {
+    // Field is not entity reference
+    return;
+  }
+
+  if ($field['settings']['handler'] != 'zariz' && strpos($field['settings']['handler'], 'zariz_') !== 0) {
+    return;
+  }
+
+  $instance = $context['instance'];
+
+  if (!in_array($instance['widget']['type'], array('options_select'))) {
+    return;
+  }
+
+  if (!$items = $context['items']) {
+    // No exsiting items in the field.
+    return;
+  }
+
+  if (!$og_context = og_context()) {
+    // No branch context.
+    return;
+  }
+  $branch_id = $og_context['gid'];
+
+  $uuids = array();
+  foreach ($items as $item) {
+    $uuids[] = $item['uuid'];
+  }
+
+  $target_type = $field['settings']['target_type'];
+  $query = new EntityFieldQuery();
+  $result = $query
+    ->entityCondition('entity_type', $target_type)
+    ->entityCondition('bundle', array_keys(zariz_get_group_content_bundles($target_type)))
+    ->addTag('zariz')
+    // Set explicitly the Branch ID.
+    ->addMetaData('zariz', array('branch_id' => $branch_id))
+    ->fieldCondition('field_uuid', 'value', $uuids, 'IN')
+    ->execute();
+
+  $element['#default_value'] = array_keys($result[$target_type]);
+
+  dpm($element);
+  dpm($context);
 }
