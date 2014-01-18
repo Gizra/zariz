@@ -1417,6 +1417,7 @@ function zariz_entity_prepare_view($entities, $type, $langcode) {
  *   will be used.
  */
 function zariz_adjust_entity_reference_fields($entity_type, $entity, $langcode = NULL, $branch_id = NULL) {
+  $entity_info = entity_get_info($entity_type);
   if (empty($entity_info['zariz'])) {
     return;
   }
@@ -1429,7 +1430,7 @@ function zariz_adjust_entity_reference_fields($entity_type, $entity, $langcode =
   }
 
   if (!$branch_id) {
-    if ($og_context = og_context()) {
+    if (!$og_context = og_context()) {
       return;
     }
     $branch_id = $og_context['gid'];
