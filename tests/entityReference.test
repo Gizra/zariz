@@ -79,7 +79,22 @@ class ZarizEntityReferenceTestCase extends DrupalWebTestCase {
   /**
    * Test UUID values are added along with the entity ID reference.
    */
-  function __testUuid() {
+  function testUuid() {
+    $live_node = zariz_create_branch('live');
+    $branch_id = $live_node->nid;
 
+    // Add a group content.
+    $values = array(
+      'type' => 'article',
+      'title' => $this->randomName(),
+    );
+    $values['field_branch'][LANGUAGE_NONE][0]['target_id'] = $branch_id;
+    $node1 = $this->drupalCreateNode($values);
+
+    // Add another group content, referencing the first one.
+    $values['field_zariz_node'][LANGUAGE_NONE][0]['target_id'] = $node1->nid;
+    $node2 = $this->drupalCreateNode($values);
+
+    $this->assertEqual($node2->field_zariz_node[LANGUAGE_NONE][0]['uuid'], $node1->field_uuid[LANGUAGE_NONE][0]['value']);
   }
 }
