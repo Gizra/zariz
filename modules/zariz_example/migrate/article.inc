@@ -9,7 +9,8 @@ class ZarizExampleArticleNodes extends ZarizExampleMigration {
   public $csvColumns = array(
     array('body', 'Body'),
     array('created', 'Posted'),
-    array('field_image', 'Image')
+    array('field_image', 'Image'),
+    array('field_zariz_node', 'Content'),
   );
 
   public $entityType = 'node';
@@ -33,6 +34,12 @@ class ZarizExampleArticleNodes extends ZarizExampleMigration {
     $this
       ->addFieldMapping('field_image:source_dir')
       ->defaultValue(drupal_get_path('module', 'zariz_example') . '/migrate/images');
+
+
+    $this
+      ->addFieldMapping('field_zariz_node', 'field_zariz_node')
+      ->sourceMigration('ZarizExampleArticleNodes')
+      ->separator('|');
 
     // Add content to the master branch.
     $master_nid = variable_get('zariz_master_branch');
