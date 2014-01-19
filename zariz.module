@@ -1210,8 +1210,8 @@ function zariz_field_create_instance($instance) {
 
   // CTools sometimes doesn't load all the plugins correctly, so we reset the
   // plugins cache, so our Entity reference behaviors will be used.
-  // Calling ctools_get_plugins_reset() doesn't work, so we just get all the
-  // entity reference "behavior" plugins and load the class ourself.
+  // Apart of Calling ctools_get_plugins_reset() we also get all the entity
+  // reference "behavior" plugins and load the class ourself.
   // This issue can be seen when executing simpleTests or enabling the module
   // via Drush.
   ctools_include('plugins');
