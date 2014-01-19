@@ -1208,6 +1208,14 @@ function zariz_field_create_instance($instance) {
     return;
   }
 
+  // CTools sometimes doesn't load all the plugins correctly, so we reset the
+  // plugins cache, so our Entity reference behaviors will be used.
+  // Calling ctools_get_plugins_reset() isn't enough, so we just get all the
+  // entity reference "behavior" plugins, and this seems to fix the issue.
+  ctools_include('plugins');
+  ctools_get_plugins_reset();
+  ctools_get_plugins('entityreference', 'behavior');
+
   // Add "Original branch" field.
   // @todo: Target bundle to "Branch".
   $og_field = og_fields_info(OG_AUDIENCE_FIELD);
