@@ -1364,6 +1364,13 @@ function zariz_field_create_instance($instance) {
         'module' => 'options',
         'type' => 'options_select',
       ),
+      'display' => array(
+        'default' => array(
+          'settings' => array(
+            'link' => TRUE,
+          ),
+        ),
+      ),
     );
     field_create_instance($instance);
   }
