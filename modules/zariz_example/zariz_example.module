@@ -1,15 +1,10 @@
 <?php
 /**
  * @file
- * Code for the Zariz example feature.
+ * Example file for the Zariz suite.
  */
 
 include_once 'zariz_example.features.inc';
-
-/**
- * @file
- * Example file for the Zariz suite.
- */
 
 /**
  * Implements hook_migrate_api().
