@@ -28,7 +28,7 @@ before_script:
   # reference and enable zariz in build site
   - ln -s $(readlink -e $(cd -)) zariz/drupal/sites/all/modules/zariz
   - cd zariz/drupal
-  - drush en og_purl -y
+  - drush en og_context og_purl -y
   # Hack to fix Replicate's module strict warning.
   - drush dl replicate
   - curl -O https://drupal.org/files/replicate-2098341-01-php-warning.patch
