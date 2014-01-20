@@ -61,6 +61,20 @@ function zariz_entity_info() {
 }
 
 /**
+ * Implements hook_entity_info_alter().
+ *
+ * Add "last id field name" property to determine which entities should be
+ * tracked by the Snapshot entity.
+ */
+function zariz_entity_info_alter(&$entity_info) {
+  $entity_info['node']['zariz'] = array(
+    'last id field name' => 'field_last_node',
+  );
+}
+
+
+
+/**
  * Merge the content of a snapshot into another branch.
  *
  * We iterate over the content in the "merge from" branch, and clone it into the
@@ -1027,6 +1041,7 @@ function zariz_query_zariz_alter(QueryAlterableInterface $query) {
 
   $snapshot = zariz_get_snapshot_from_branch($branch_id);
 
+  $node_alias = FALSE;
   $tables = &$query->getTables();
   foreach ($tables as $alias => $info) {
     if ($info['table'] == 'node') {
@@ -1193,6 +1208,19 @@ function zariz_field_create_instance($instance) {
     return;
   }
 
+  // CTools sometimes doesn't load all the plugins correctly, so we reset the
+  // plugins cache, so our Entity reference behaviors will be used.
+  // Apart of Calling ctools_get_plugins_reset() we also get all the entity
+  // reference "behavior" plugins and load the class ourself.
+  // This issue can be seen when executing simpleTests or enabling the module
+  // via Drush.
+  ctools_include('plugins');
+  ctools_get_plugins_reset();
+
+  module_load_include('php', 'zariz', 'entityreference/behavior/ZarizEntityReferenceBehavior.class');
+
+  ctools_get_plugins('entityreference', 'behavior');
+
   // Add "Original branch" field.
   // @todo: Target bundle to "Branch".
   $og_field = og_fields_info(OG_AUDIENCE_FIELD);
@@ -1297,6 +1325,55 @@ function zariz_field_create_instance($instance) {
     );
     field_create_instance($instance);
   }
+
+  // @todo: Add option to add this field, as it is not mandatory?
+  // Add "Content" - a node reference field.
+  // We prefix the field name with "zariz" to indicate its a reference field
+  // that is aware to the context.
+  $field_name = 'field_zariz_node';
+  if (!field_info_field($field_name)) {
+    $field = array(
+      'entity_types' => array(),
+      'settings' => array(
+        // The handler is "zariz".
+        'handler' => 'zariz',
+        'target_type' => 'node',
+        'handler_settings' => array(
+          'target_bundles' => array(),
+          'behaviors' => array(
+            'zariz' => array(
+              'status' => TRUE,
+            ),
+          ),
+        ),
+      ),
+      'field_name' => $field_name,
+      'type' => 'entityreference',
+      'cardinality' => FIELD_CARDINALITY_UNLIMITED,
+    );
+    field_create_field($field);
+  }
+
+  if (!field_info_instance($entity_type, $field_name, $bundle)) {
+    $instance = array(
+      'entity_type' => $entity_type,
+      'field_name' => $field_name,
+      'bundle' => $bundle,
+      'label' => 'Content',
+      'widget' => array(
+        'module' => 'options',
+        'type' => 'options_select',
+      ),
+      'display' => array(
+        'default' => array(
+          'settings' => array(
+            'link' => TRUE,
+          ),
+        ),
+      ),
+    );
+    field_create_instance($instance);
+  }
 }
 
 /**
@@ -1334,3 +1411,194 @@ function zariz_views_api($module, $api) {
   }
 }
 
+
+/**
+ * Implements hook_ctools_plugin_directory().
+ */
+function zariz_ctools_plugin_directory($module, $plugin) {
+  if ($module == 'entityreference') {
+    return $module . '/' . $plugin;
+  }
+}
+
+
+/**
+ * Implements hook_entity_prepare_view().
+ */
+function zariz_entity_prepare_view($entities, $type, $langcode) {
+  foreach ($entities as &$entity) {
+    zariz_adjust_entity_reference_fields($type, $entity, $langcode);
+  }
+
+}
+
+
+/**
+ * Change entity reference according to the context.
+ *
+ * @param $entity_type
+ *   The entity type.
+ * @param $entity
+ *   The entity object passed by reference.
+ * @param $langcode
+ *   The language code of the field.
+ * @param $branch_id
+ *   (optional) The branch ID. If NULL the current context
+ *   will be used.
+ */
+function zariz_adjust_entity_reference_fields($entity_type, $entity, $langcode = NULL, $branch_id = NULL) {
+  $entity_info = entity_get_info($entity_type);
+  if (empty($entity_info['zariz'])) {
+    return;
+  }
+
+  list(,, $bundle) = entity_extract_ids($entity_type, $entity);
+
+  if (!og_is_group_content_type($entity_type, $bundle)) {
+    // Not a group content.
+    return;
+  }
+
+  if (!$branch_id) {
+    if (!$og_context = og_context()) {
+      return;
+    }
+    $branch_id = $og_context['gid'];
+  }
+
+  $field_names = array();
+
+  foreach (field_info_instances($entity_type, $bundle) as $field_name => $instance) {
+    $field = field_info_field($field_name);
+    if ($field['type'] != 'entityreference') {
+      // Field is not entity reference
+      continue;
+    }
+
+    if ($field['settings']['handler'] != 'zariz' && strpos($field['settings']['handler'], 'zariz_') !== 0) {
+      continue;
+    }
+
+    $field_names[$field_name] = $field;
+  }
+
+  if (!$field_names) {
+    // No fields found.
+    return;
+  }
+
+  $wrapper = entity_metadata_wrapper($entity_type, $entity);
+
+  foreach ($field_names as $field_name => $field) {
+    $uuids = array();
+    $cardinality = $field['cardinality'];
+    if ($cardinality == 1) {
+      if ($id = $wrapper->{$field_name}->getIdentifier()) {
+        $uuids[$id] = $wrapper->{$field_name}->field_uuid->value();
+      }
+    }
+    else {
+      foreach ($wrapper->{$field_name} as $sub_wrapper) {
+        $id = $sub_wrapper->getIdentifier();
+        $uuids[$id] = $sub_wrapper->field_uuid->value();
+      }
+    }
+
+    if (!$uuids) {
+      // No values in the field.
+      continue;
+    }
+
+    $query = new EntityFieldQuery();
+    $result = $query
+      ->entityCondition('entity_type', 'node')
+      ->entityCondition('bundle', array_keys(zariz_get_group_content_bundles()))
+      ->addTag('zariz')
+      // Set explicitly the Branch ID.
+      ->addMetaData('zariz', array('branch_id' => $branch_id))
+      ->fieldCondition('field_uuid', 'value', $uuids, 'IN')
+      ->propertyOrderBy('nid')
+      ->execute();
+
+    $target_type = $field['settings']['target_type'];
+    foreach (entity_load($target_type, array_keys($result[$target_type])) as $entity_item) {
+      $item_wrapper = entity_metadata_wrapper($target_type, $entity_item);
+      $uuid = $item_wrapper->field_uuid->value();
+
+      // Re-add the "access" and "entity" properties that were added in
+      // entityreference_field_formatter_prepare_view(), which was executed
+      // before this function.
+      $new_ids[$uuid] = array(
+        'target_id' => $item_wrapper->getIdentifier(),
+        'entity' => $entity_item,
+        'access' => entity_access('view', $target_type, $entity_item),
+        // Since we already have the UUID, we add it here, so other may use it
+        // for example in a custom formatter.
+        'uuid' => $uuid,
+      );
+    }
+
+    // Sort the new IDs by the old IDs.
+    $new_values = array();
+    foreach ($uuids as $uuid) {
+      $new_values[] = $new_ids[$uuid];
+    }
+
+    // @todo: Use the $langcode?
+    $entity->{$field_name}[LANGUAGE_NONE] = $new_values;
+  }
+}
+
+/**
+ * Implements hook_field_widget_form_alter().
+ *
+ * Re-set the #default_value property based on the UUID.
+ *
+ * @todo: Currently supports only the select list widget.
+ */
+function zariz_field_widget_form_alter(&$element, &$form_state, $context) {
+  $field = $context['field'];
+  if ($field['type'] != 'entityreference') {
+    // Field is not entity reference
+    return;
+  }
+
+  if ($field['settings']['handler'] != 'zariz' && strpos($field['settings']['handler'], 'zariz_') !== 0) {
+    return;
+  }
+
+  $instance = $context['instance'];
+
+  if (!in_array($instance['widget']['type'], array('options_select'))) {
+    return;
+  }
+
+  if (!$items = $context['items']) {
+    // No existing items in the field.
+    return;
+  }
+
+  if (!$og_context = og_context()) {
+    // No branch context.
+    return;
+  }
+  $branch_id = $og_context['gid'];
+
+  $uuids = array();
+  foreach ($items as $item) {
+    $uuids[] = $item['uuid'];
+  }
+
+  $target_type = $field['settings']['target_type'];
+  $query = new EntityFieldQuery();
+  $result = $query
+    ->entityCondition('entity_type', $target_type)
+    ->entityCondition('bundle', array_keys(zariz_get_group_content_bundles($target_type)))
+    ->addTag('zariz')
+    // Set explicitly the Branch ID.
+    ->addMetaData('zariz', array('branch_id' => $branch_id))
+    ->fieldCondition('field_uuid', 'value', $uuids, 'IN')
+    ->execute();
+
+  $element['#default_value'] = array_keys($result[$target_type]);
+}

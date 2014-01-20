@@ -1,0 +1,109 @@
+<?php
+
+/**
+ * @file
+ * Contains ZarizEntityReferenceTestCase
+ */
+
+class ZarizEntityReferenceTestCase extends DrupalWebTestCase {
+
+  public static function getInfo() {
+    return array(
+      'name' => 'Entity Reference',
+      'description' => 'Test entity reference integration with Zariz.',
+      'group' => 'Zariz',
+    );
+  }
+
+  function setUp() {
+    parent::setUp('zariz');
+    $og_field = og_fields_info(OG_AUDIENCE_FIELD);
+    $og_field['field']['cardinality'] = 1;
+    og_create_field('field_branch', 'node', 'article', $og_field);
+  }
+
+  /**
+   * Test adjusting entity reference values.
+   */
+  function testAdjustValues() {
+    $live_node = zariz_create_branch('live');
+    $branch_id = $live_node->nid;
+
+    // Add a group content.
+    $values = array(
+      'type' => 'article',
+      'title' => $this->randomName(),
+    );
+    $values['field_branch'][LANGUAGE_NONE][0]['target_id'] = $branch_id;
+    $node1 = $this->drupalCreateNode($values);
+
+    // Add another group content, referencing the first one.
+    $values['field_zariz_node'][LANGUAGE_NONE][0]['target_id'] = $node1->nid;
+    $node2 = $this->drupalCreateNode($values);
+
+    // Assert referenced ID didn't change in a the same branch.
+    $node2_adjusted = clone $node2;
+    zariz_adjust_entity_reference_fields('node', $node2_adjusted, NULL, $branch_id);
+    $this->assertEqual($node2_adjusted->field_zariz_node[LANGUAGE_NONE][0]['target_id'], $node1->nid);
+
+    // Create another branch.
+    $dev_node = zariz_create_branch('dev', $live_node);
+
+    // Assert referenced ID didn't change in a new branch.
+    $node2_adjusted = clone $node2;
+    zariz_adjust_entity_reference_fields('node', $node2_adjusted, NULL, $dev_node->nid);
+    $this->assertEqual($node2_adjusted->field_zariz_node[LANGUAGE_NONE][0]['target_id'], $node1->nid);
+
+    // "Edit" node1 in another branch.
+    $values['field_branch'][LANGUAGE_NONE][0]['target_id'] = $dev_node->nid;
+    $values['field_uuid'] = $node1->field_uuid;
+    $values['title'] = $node1->title . ' edited';
+    $node3 = $this->drupalCreateNode($values);
+
+    // Assert referenced ID changed in the new branch.
+    $node2_adjusted = clone $node2;
+    zariz_adjust_entity_reference_fields('node', $node2_adjusted, NULL, $dev_node->nid);
+    $this->assertEqual($node2_adjusted->field_zariz_node[LANGUAGE_NONE][0]['target_id'], $node3->nid);
+
+    // Merge the dev branch to the live branch.
+    $snapshot = zariz_merge_branch($dev_node->nid);
+
+    // Get the created node ID from the snapshot, and assert it is being
+    // referenced.
+    $node2_adjusted = clone $node2;
+    zariz_adjust_entity_reference_fields('node', $node2_adjusted, NULL, $dev_node->nid);
+    $this->assertEqual($node2_adjusted->field_zariz_node[LANGUAGE_NONE][0]['target_id'], $snapshot->field_last_node[LANGUAGE_NONE][0]['target_id']);
+
+  }
+
+  /**
+   * Test UUID values are added along with the entity ID reference.
+   */
+  function testUuid() {
+    $live_node = zariz_create_branch('live');
+    $branch_id = $live_node->nid;
+
+    // Add a group content.
+    $values = array(
+      'type' => 'article',
+      'title' => $this->randomName(),
+    );
+    $values['field_branch'][LANGUAGE_NONE][0]['target_id'] = $branch_id;
+    $node1 = $this->drupalCreateNode($values);
+    $node2 = $this->drupalCreateNode($values);
+
+    // Add another group content, referencing other nodes.
+    $values['field_zariz_node'][LANGUAGE_NONE][0]['target_id'] = $node1->nid;
+    $values['field_zariz_node'][LANGUAGE_NONE][1]['target_id'] = $node2->nid;
+    $node3 = $this->drupalCreateNode($values);
+
+    $this->assertEqual($node3->field_zariz_node[LANGUAGE_NONE][0]['uuid'], $node1->field_uuid[LANGUAGE_NONE][0]['value']);
+    $this->assertEqual($node3->field_zariz_node[LANGUAGE_NONE][1]['uuid'], $node2->field_uuid[LANGUAGE_NONE][0]['value']);
+
+    $node3 = node_load($node3->nid);
+
+    // Assert UUID is shown after re-loading entity.
+    $this->assertEqual($node3->field_zariz_node[LANGUAGE_NONE][0]['uuid'], $node1->field_uuid[LANGUAGE_NONE][0]['value']);
+    $this->assertEqual($node3->field_zariz_node[LANGUAGE_NONE][1]['uuid'], $node2->field_uuid[LANGUAGE_NONE][0]['value']);
+  }
+}

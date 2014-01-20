@@ -23,11 +23,13 @@ before_script:
 
   # create new site, stubbing sendmail path with true to prevent delivery errors and manually resolving drush path
   - mysql -e 'create database zariz'
-  - php -d sendmail_path=`which true` `pear config-get php_dir`/drush/drush.php --yes core-quick-drupal --profile=testing --no-server --db-url=mysql://root:@127.0.0.1/zariz --enable=simpletest zariz
+  - php -d sendmail_path=`which true` `pear config-get php_dir`/drush/drush.php --yes core-quick-drupal --profile=testing --no-server --db-url=mysql://root:@127.0.0.1/zariz --enable=simpletest zariz og_purl
 
   # reference and enable zariz in build site
   - ln -s $(readlink -e $(cd -)) zariz/drupal/sites/all/modules/zariz
   - cd zariz/drupal
+  - drush dl og -y
+  - drush en og_context og_purl -y
   # Hack to fix Replicate's module strict warning.
   - drush dl replicate
   - curl -O https://drupal.org/files/replicate-2098341-01-php-warning.patch
