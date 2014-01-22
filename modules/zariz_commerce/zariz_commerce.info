@@ -1,0 +1,6 @@
+name = Zariz Commerce
+description = Integration of Zariz with Commerce.
+core = 7.x
+
+dependencies[] = zariz
+dependencies[] = commerce_product_ui

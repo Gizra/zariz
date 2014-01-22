@@ -3,3 +3,6 @@ description = Provide functionality to allow static site generation from the mas
 core = 7.x
 
 dependencies[] = zariz
+
+; Tests
+files[] = tests/pagesList.test

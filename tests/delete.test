@@ -1,0 +1,60 @@
+<?php
+
+/**
+ * @file
+ * Contains ZarizDeleteTestCase
+ */
+
+class ZarizDeleteTestCase extends DrupalWebTestCase {
+
+  public static function getInfo() {
+    return array(
+      'name' => 'Delete entity',
+      'description' => 'Test deleting entity tracked by Zariz.',
+      'group' => 'Zariz',
+    );
+  }
+
+  function setUp() {
+    parent::setUp('zariz');
+    $og_field = og_fields_info(OG_AUDIENCE_FIELD);
+    $og_field['field']['cardinality'] = 1;
+    og_create_field('field_branch', 'node', 'article', $og_field);
+  }
+
+  /**
+   * Test deleting entity tracked by Zariz
+   */
+  function testDelete() {
+    $live_node = zariz_create_branch('live');
+
+    // Add a group content.
+    $values = array(
+      'type' => 'article',
+      'title' => 'title1',
+    );
+    $values['field_branch'][LANGUAGE_NONE][0]['target_id'] = $live_node->nid;
+    $node1 = $this->drupalCreateNode($values);
+
+    try {
+      node_delete($node1->nid);
+      $this->fail('Entity tracked by Zariz can be deleted.');
+    }
+    catch (Exception $e) {
+      $this->pass('Entity tracked by Zariz cannot be deleted.');
+    }
+
+
+    // Explicitly allow deleting.
+    $node1->zariz_allow_delete = TRUE;
+    try {
+      node_delete($node1->nid);
+      $this->pass('Entity tracked by Zariz can be deleted when property is set.');
+    }
+    catch (Exception $e) {
+      $this->pass('Entity tracked by Zariz cannot be deleted when property is set.');
+    }
+
+
+  }
+}

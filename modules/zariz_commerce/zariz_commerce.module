@@ -1,0 +1,243 @@
+<?php
+
+/**
+ * @file
+ * Integration of Zariz with Commerce.
+ */
+
+/**
+ * Implements hook_menu_alter().
+ *
+ * Route editing of Commerce products into our own function.
+ */
+function zariz_commerce_menu_alter(&$items) {
+  $items['admin/commerce/products/%commerce_product']['page callback'] = 'zariz_commerce_product_form_wrapper';
+}
+
+/**
+ * Form callback wrapper: edit or clone a product.
+ *
+ * @param $product
+ *   The product object being edited by this form.
+ *
+ * @see commerce_product_ui_product_form_wrapper()
+ */
+function zariz_commerce_product_form_wrapper($product) {
+  $clone_product = clone $product;
+  if ($og_context = og_context()) {
+    $branch_id = $og_context['gid'];
+    // If the product belongs to another branch, then it should be cloned
+    // instead of edited.
+    $wrapper = entity_metadata_wrapper('commerce_product', $clone_product);
+    if ($wrapper->field_branch->getIdentifier() != $branch_id) {
+      $clone_product->clone = TRUE;
+      // Adjust the branch.
+      $clone_product->field_branch[LANGUAGE_NONE][0]['target_id'] = $branch_id;
+
+      $clone_product->is_new = TRUE;
+      $clone_product->product_id = NULL;
+      $clone_product->revision_id = NULL;
+
+      if (!$original_sku = $wrapper->field_uuid->value()) {
+        $original_sku = $product->sku;
+        $wrapper->field_uuid->set($clone_product->sku);
+      }
+
+      $clone_product->sku .= $original_sku . ':' . $wrapper->field_branch->getIdentifier();
+    }
+  }
+
+  // Include the forms file from the Product module.
+  module_load_include('inc', 'commerce_product', 'includes/commerce_product.forms');
+  $form = drupal_get_form('commerce_product_ui_product_form', $clone_product);
+  return $form;
+}
+
+/**
+ * Implements hook_commerce_product_presave().
+ *
+ * Set the UUID field to the SKU value.
+ */
+function zariz_commerce_commerce_product_presave($product) {
+  $wrapper = entity_metadata_wrapper('commerce_product', $product);
+  if ($wrapper->field_uuid->value()) {
+    return;
+  }
+
+  $wrapper->field_uuid->set($product->sku);
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function zariz_commerce_form_commerce_product_ui_product_form_alter(&$form, $form_state) {
+  if (empty($form['#entity']->clone)) {
+    // Not a clone.
+    return;
+  }
+  // Disable the SKU field.
+  $form['sku']['#disabled'] = TRUE;
+  $form['actions']['submit']['#submit'][] = 'zariz_commerce_product_ui_submit';
+}
+
+/**
+ * Submit handler; Redirect to the newely cloned product.
+ */
+function zariz_commerce_product_ui_submit($form, &$form_state) {
+  $product = $form_state['commerce_product'];
+  $form_state['redirect'] = 'admin/commerce/products/' . $product->product_id;
+}
+
+/**
+ * Implements hook_entity_info_alter().
+ */
+function zariz_commerce_entity_info_alter(&$entity_info) {
+  $entity_info['commerce_product']['zariz'] = array(
+    'last id field name' => 'field_last_commerce_product',
+    'path view' => FALSE,
+  );
+}
+
+/**
+ * Implements hook_zariz_ui_toolbar_links_alter().
+ *
+ * Add "Create product" link to the Zariz toolbar.
+ */
+function zariz_commerce_zariz_ui_toolbar_links_alter(&$links, $branch_id) {
+  if (zariz_is_master_branch($branch_id)) {
+    return;
+  }
+
+  $entity_info = entity_get_info('commerce_product');
+  if (!$entity_info['bundles']) {
+    return;
+  }
+
+  if (!entity_access('create', 'commerce_product')) {
+    // No access to create products.
+    return;
+  }
+
+  foreach ($entity_info['bundles'] as $bundle => $info) {
+    if (!zariz_is_bundle_tracked('commerce_product', $bundle)) {
+      // Not a bundle tracked by Zariz.
+      continue;
+    }
+
+    $label = $info['label'];
+    $links[] = l(t('Create @label', array('@label' => $label)), 'admin/commerce/products/add/product');
+  }
+}
+
+/**
+ * Implements hook_modules_enabled().
+ *
+ * Make Commerce product's "product" bundle a group content.
+ */
+function zariz_commerce_modules_enabled($modules) {
+  if (in_array('zariz_commerce', $modules)) {
+    $og_field = og_fields_info(OG_AUDIENCE_FIELD);
+    $og_field['field']['cardinality'] = 1;
+    $og_field['field']['settings']['handler'] = 'og';
+    $og_field['instance']['label'] = 'Branch';
+    $og_field['instance']['required'] = TRUE;
+    // Add entity reference prepopulate.
+    $og_field['instance']['settings']['behaviors']['prepopulate'] = array(
+      'action' => 'hide',
+      'fallback' => 'redirect',
+      'og_context' => TRUE,
+      'action_on_edit' => TRUE,
+      'status' => TRUE,
+    );
+
+    og_create_field('field_branch', 'commerce_product', 'product', $og_field);
+
+    // CTools doesn't load all the plugins correctly upon installation, so we reset
+    // the plugins cache, so our Entity reference behaviors will be used.
+    // Apart of Calling ctools_get_plugins_reset() we also get all the entity
+    // reference "behavior" plugins and load the class ourself.
+    // This issue can be seen when executing simpleTests or enabling the module
+    // via Drush.
+    ctools_include('plugins');
+    ctools_get_plugins_reset();
+    module_load_include('php', 'zariz', 'entityreference/behavior/ZarizEntityReferenceBehavior.class');
+    ctools_get_plugins('entityreference', 'behavior');
+
+    // Product reference.
+    $field_name = 'field_zariz_product';
+    if (!field_info_field($field_name)) {
+      $field = array(
+        'entity_types' => array(),
+        'settings' => array(
+          // The handler is "zariz".
+          'handler' => 'zariz',
+          'target_type' => 'commerce_product',
+          'handler_settings' => array(
+            'target_bundles' => array(),
+            'behaviors' => array(
+              'zariz' => array(
+                'status' => TRUE,
+              ),
+            ),
+          ),
+        ),
+        'field_name' => $field_name,
+        'type' => 'entityreference',
+        'cardinality' => FIELD_CARDINALITY_UNLIMITED,
+      );
+      field_create_field($field);
+    }
+
+    if (!field_info_instance('node', $field_name, 'article')) {
+      $instance = array(
+        'entity_type' => 'node',
+        'field_name' => $field_name,
+        'bundle' => 'article',
+        'label' => 'Products',
+        'widget' => array(
+          'module' => 'options',
+          'type' => 'options_select',
+        ),
+        'display' => array(
+          'default' => array(
+            // Use the "Add to cart" which relies on a patch from
+            // https://drupal.org/node/1679852
+            'type' => 'commerce_cart_add_to_cart_form',
+          ),
+        ),
+      );
+      field_create_instance($instance);
+    }
+  }
+}
+
+/**
+ * Implements hook_replicate_entity_ENTITY_TYPE().
+ */
+function zariz_commerce_replicate_entity_commerce_product(&$entity) {
+  $entity->product_id = NULL;
+  $entity->revision_id = NULL;
+  // SKU is a unique key, so we have to auto assign it a value. The value is
+  // the previous SKU, appended with the branch ID, but keep the original
+  // one in the "UUID" field as it is in fact a unique identifier.
+  $wrapper = entity_metadata_wrapper('commerce_product', $entity);
+
+  if (!$original_sku = $wrapper->field_uuid->value()) {
+    $original_sku = $entity->sku;
+    $wrapper->field_uuid->set($entity->sku);
+  }
+
+  $entity->sku .= $original_sku . ':' . $wrapper->field_branch->getIdentifier();
+}
+
+/**
+ * Implements hook_field_access().
+ */
+function zariz_commerce_field_access($op, $field, $entity_type, $entity, $account) {
+  $field_names = array(
+    'field_original_sku',
+  );
+  if ($op == 'edit' && in_array($field['field_name'], $field_names)) {
+    return FALSE;
+  }
+}

@@ -16,10 +16,12 @@ class ZarizSnapshotTestCase extends DrupalWebTestCase {
   }
 
   function setUp() {
-    parent::setUp('zariz');
+    parent::setUp('zariz', 'entity_feature', 'zariz_test');
     $og_field = og_fields_info(OG_AUDIENCE_FIELD);
     $og_field['field']['cardinality'] = 1;
+
     og_create_field('field_branch', 'node', 'article', $og_field);
+    og_create_field('field_branch', 'entity_test', 'main', $og_field);
   }
 
   /**
@@ -29,7 +31,7 @@ class ZarizSnapshotTestCase extends DrupalWebTestCase {
     $branch_node = zariz_create_branch('master');
     $branch_id = $branch_node->nid;
 
-    // Add a group content.
+    // Add a group content node.
     $values = array(
       'type' => 'article',
       'title' => $this->randomName(),
@@ -37,9 +39,17 @@ class ZarizSnapshotTestCase extends DrupalWebTestCase {
     $values['field_branch'][LANGUAGE_NONE][0]['target_id'] = $branch_id;
     $node1 = $this->drupalCreateNode($values);
 
+    // Add a group content "entity-test"
+    $entity1 = entity_create('entity_test', array('name' => 'main', 'uid' => 1));
+    $entity1->save();
+    og_group('node', $branch_id, array('entity_type' => 'entity_test', 'entity' => $entity1));
+
     // Assert snapshot that was created, and the last node ID.
     $snapshot1 = zariz_get_snapshot_from_branch($branch_id);
     $this->assertEqual($node1->nid, $snapshot1->field_last_node[LANGUAGE_NONE][0]['target_id'], 'Last node ID created on Snapshot.');
+
+    // Assert the last entity-test ID.
+    $this->assertEqual($entity1->pid, $snapshot1->field_last_entity_test[LANGUAGE_NONE][0]['target_id'], 'Last entity ID created on Snapshot.');
 
     // Add another group content.
     $node2 = $this->drupalCreateNode($values);
@@ -48,6 +58,16 @@ class ZarizSnapshotTestCase extends DrupalWebTestCase {
     // Assert this is the same snapshot.
     $this->assertEqual($snapshot1->sid, $snapshot2->sid, 'Existing snapshot was used when added content.');
     $this->assertEqual($node2->nid, $snapshot1->field_last_node[LANGUAGE_NONE][0]['target_id'], 'Last node ID updated on Snapshot.');
+
+    // Lock the snapshot, and assert a new snapshot has the parent's snapshot
+    // last entity ID.
+    $snapshot2->lock();
+
+    $snapshot3 = zariz_get_snapshot_from_branch($branch_id, TRUE);
+    $this->assertTrue(empty($snapshot3->sid));
+
+    $this->assertEqual($snapshot2->field_last_node[LANGUAGE_NONE][0]['target_id'], $snapshot3->field_last_node[LANGUAGE_NONE][0]['target_id'], 'Last node ID was copied to the new Snapshot.');
+    $this->assertEqual($snapshot2->field_last_entity_test[LANGUAGE_NONE][0]['target_id'], $snapshot3->field_last_entity_test[LANGUAGE_NONE][0]['target_id'], 'Last entity ID was copied to the new Snapshot.');
   }
 
   /**

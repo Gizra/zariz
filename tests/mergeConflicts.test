@@ -53,21 +53,24 @@ class ZarizBranchMergeConflictsTestCase extends DrupalWebTestCase {
     // Assert there are no conflicts.
     $this->assertFalse(zariz_get_merge_conflicts($dev_node->nid, $live_node->nid), 'No conflicts found.');
 
-    // Add group content on "live" branch, that and same UUID as node1, but
+    // Add group content on "live" branch, that has the same UUID as node1, but
     // higher node ID than node2.
     $values['field_branch'][LANGUAGE_NONE][0]['target_id'] = $live_node->nid;
     $node3 = $this->drupalCreateNode($values);
 
     // Assert there are conflicts.
     $expected_result = array(
-      'uuid1' => array(
-        'from' => $node2->nid,
-        'to' => $node3->nid,
+      'node' => array(
+        'uuid1' => array(
+          'from' => $node2->nid,
+          'to' => $node3->nid,
+        ),
       ),
     );
+
     $this->assertEqual($expected_result, zariz_get_merge_conflicts($dev_node->nid, $live_node->nid), 'Conflicts found.');
 
     // Assert parent branch was auto detected.
-    $this->assertEqual($expected_result, zariz_get_merge_conflicts($dev_node->nid, $live_node->nid), 'Parent branch was auto-detected and conflicts found.');
+    $this->assertEqual($expected_result, zariz_get_merge_conflicts($dev_node->nid), 'Parent branch was auto-detected and conflicts found.');
   }
 }

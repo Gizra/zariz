@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/Gizra/zariz.png?branch=7.x-1.x)](https://travis-ci.org/Gizra/zariz)
 
-# Content preview module suite for Drupal 7.x
+# "Site preview" module suite for Drupal 7.x
 
 Zariz is a suite of Drupal modules and methodology, that models content (nodes)
 creation and editing similar to Git's branches, and allows generating static
@@ -10,7 +10,7 @@ blog post, and [here](http://www.gizra.com/content/zariz-in-pics/).
 The counterpart of Zariz which is responsible for the static site creation is
 [generator-zariz](https://npmjs.org/package/generator-zariz).
 
-### Creating branch
+## Creating branch
 
 The OG (Organic groups) group type ``Branch`` is equivalent to a Git branch.
 
@@ -22,7 +22,7 @@ $live_node = zariz_create_branch('live');
 $dev_node = zariz_create_branch('dev', $live_node);
 ```
 
-### Merging branches
+## Merging branches
 
 We can check if there are merge conflicts - meaning that there is already a newer
 content in the "to branch". Zariz will auto-detect the parent branch.
@@ -38,7 +38,7 @@ branch" will be cloned into the "to branch".
 $snapshot = zariz_merge_branch($dev_node->nid);
 ```
 
-### Working with Snapshots
+## Working with Snapshots
 
 Snapshots holds information about the content of a branch at a certain time.
 This is done by simply holding the last entity ID (e.g. node) that existed. The last entity ID can keep changing as long as the snapshot is not locked.
@@ -54,7 +54,7 @@ $snpashot->isLocked()
 $snpashot->lock()
 ```
 
-### Query alter
+## Query alter
 
 Zariz can alter a query to the node table, to reflect the content in a certain branch.
 The altering is opt-in, by settings the ``zariz`` query tag. For example:
@@ -75,23 +75,27 @@ $result = $query
 
 The same query tag can be also used in Views. For example in ``/admin/structure/views/view/branch_content/edit`` under ``Query settings`` => ``Query Tags`` notice that the ``zariz`` tag was added.
 
-### Dependencies
+## Dependencies
 
 Unless stated otherwise, use latest release version is required.
 
-* [Entity reference prepopualte](https://drupal.org/project/entityreference_prepopulate) 
+* [Entity reference prepopualte](https://drupal.org/project/entityreference_prepopulate)
 * [Organic groups](https://drupal.org/project/og) (Dev version until [this](https://drupal.org/node/2162861) bug in Drupal.org release managment is fixed)
 * [Replicate](https://drupal.org/project/replicate)
 * [Node clone](https://drupal.org/project/node_clone)
 
-Here is the Drush command to download and install Zariz UI:
-```
-drush dl entityreference_prepopulate replicate node_clone
-drush dl og --dev
-drush en zariz_ui
+### Commerce integration
+"Zariz commerce" module integrates with commerce and allows smart revisioning
+of commerce products.
+In order to be able to "Add to cart" from the reference field, [this](https://drupal.org/node/1679852) soon-to-be
+merged patch is needed. You can apply it using:
+
+```bash
+curl -O https://drupal.org/files/entityreference_instead_of_product_reference.patch
+patch -p1 < entityreference_instead_of_product_reference.patch
 ```
 
-### Typical permissions setup
+## Typical permissions setup
 
 * In ``admin/people/permissions`` grant authenticated user ``Branch: Create new content``
 * In ``admin/config/group/permissions/node/branch`` grant non-member and member roles the following permissions:
@@ -100,8 +104,14 @@ drush en zariz_ui
  * ``Edit any Article content``
 
 
-### Example module
+## Example module
 
 Enable ``zariz_example`` module and follow its [README](https://github.com/Gizra/zariz/blob/7.x-1.x/modules/zariz_example/README.md)
+Here is the Drush command to download and install Zariz Example:
+```
+drush dl entityreference_prepopulate replicate node_clone
+drush dl og --dev
+drush en zariz_example
+```
 
 Developed by [Gizra](http://gizra.com)
