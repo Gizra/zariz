@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/Gizra/zariz.png?branch=master)](https://travis-ci.org/Gizra/zariz)
+[![Build Status](https://travis-ci.org/Gizra/zariz.png?branch=7.x-1.x)](https://travis-ci.org/Gizra/zariz)
 
 # Content preview module suite for Drupal 7.x
 
