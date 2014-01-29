@@ -1,0 +1,47 @@
+<?php
+
+/**
+ * @file
+ * Contains ZarizBranchTestCase
+ */
+
+class ZarizOverrideOverridesTestCase extends DrupalWebTestCase {
+
+  public static function getInfo() {
+    return array(
+      'name' => 'Overrides',
+      'description' => 'Test the overrides per branch.',
+      'group' => 'Zariz Override',
+    );
+  }
+
+  function setUp() {
+    parent::setUp('zariz', 'zariz_override');
+  }
+
+  /**
+   * Test creation of a single master branch.
+   */
+  function testOverrides() {
+    $live_node = zariz_create_branch('live');
+    $dev_node1 = zariz_create_branch('dev', $live_node);
+    $dev_node2 = zariz_create_branch('dev1', $dev_node1);
+
+    // Set the newer branch first, just so we assert we fetch the overrides by
+    // the correct order.
+    zariz_override_set_override($dev_node1->nid, 'variable', 'foo', 'baz');
+    zariz_override_set_override($live_node->nid, 'variable', 'foo', 'bar');
+
+    zariz_override_set_override($dev_node2->nid, 'variable', 'new', 'one');
+    zariz_override_set_override($dev_node2->nid, 'another', 'this', 'is');
+
+    $overrides = zariz_override_get_overrides($dev_node2->nid, 'variable');
+
+    $expected_result = array(
+      'new' => 'one',
+      'foo' => 'baz',
+    );
+
+    $this->assertEqual($overrides, $expected_result);
+  }
+}
