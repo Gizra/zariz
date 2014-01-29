@@ -10,6 +10,7 @@ files[] = includes/zariz.snapshot.inc
 
 ; Tests
 files[] = tests/branch.test
+files[] = tests/delete.test
 files[] = tests/entityReference.test
 files[] = tests/entityReferenceUi.test
 files[] = tests/merge.test

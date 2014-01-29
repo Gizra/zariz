@@ -1,0 +1,6 @@
+name = Zariz test module
+description = Functionality to assist Zariz testing.
+core = 7.x
+dependencies[] = zariz
+dependencies[] = entity_feature
+hidden = TRUE

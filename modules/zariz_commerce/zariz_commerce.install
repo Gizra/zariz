@@ -1,0 +1,45 @@
+<?php
+
+/**
+ * @file
+ * Install, update, and uninstall functions for the Zariz Commerce module.
+ */
+
+
+/**
+ * Implements hook_install().
+ *
+ * Add Zariz related fields.
+ */
+function zariz_commerce_install() {
+  $field_name = 'field_last_commerce_product';
+
+  if (!field_info_field($field_name)) {
+    $field = array(
+      'entity_types' => array('snapshot'),
+      'settings' => array(
+        'handler' => 'base',
+        'target_type' => 'commerce_product',
+        'handler_settings' => array(
+          'target_bundles' => array(),
+        ),
+      ),
+      'field_name' => $field_name,
+      'type' => 'entityreference',
+      'cardinality' => 1,
+    );
+    field_create_field($field);
+  }
+
+  if (!field_info_instance('snapshot', $field_name, 'snapshot')) {
+    $instance = array(
+      'entity_type' => 'snapshot',
+      'field_name' => $field_name,
+      'bundle' => 'snapshot',
+      'label' => 'Last commerce product',
+      'settings' => array(),
+    );
+    field_create_instance($instance);
+  }
+}
+

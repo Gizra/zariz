@@ -22,6 +22,15 @@ function zariz_static_menu() {
   return $items;
 }
 
+/**
+ * Implements hook_entity_info_alter().
+ *
+ * Add "path view" property to determine the URL of the nodes.
+ */
+function zariz_static_entity_info_alter(&$entity_info) {
+  $entity_info['node']['zariz']['path view'] = 'node/%';
+}
+
 
 /**
  * Page callback; Return pages list by snapshot in JSON.
@@ -38,7 +47,64 @@ function zariz_static_get_pages_list_json($branch_id = NULL) {
 
   // Get the latest snapshot of the branch.
   $snapshot = zariz_get_snapshot_from_branch($branch_id);
-  drupal_json_output(zariz_get_page_list_by_snapshot($snapshot));
+  drupal_json_output(zariz_static_get_page_list_by_snapshot($snapshot));
+}
+
+
+/**
+ * Get a page list of inserted and deleted items, from a single snapshot.
+ *
+ * @param $snapshot_id
+ *   The snapshot ID or object.
+ *
+ * @return
+ *   Array keyed by "insert" or "deleted" and the URL as value.
+ */
+function zariz_static_get_page_list_by_snapshot($snapshot_id) {
+  $wrapper = entity_metadata_wrapper('snapshot', $snapshot_id);
+  $snapshot = $wrapper->value();
+
+  $branch_id = $snapshot->nid;
+
+  $return = array('insert' => array(), 'delete' => array());
+  $urls = array();
+
+  // @todo: Invoke hook.
+  // Include the home page.
+  $urls[] = 'index.php';
+
+  foreach (zariz_get_tracked_entity_types() as $entity_type => $info) {
+    $last_id_field_name = $info['last id field name'];
+    $last_id = $wrapper->{$last_id_field_name}->getIdentifier();
+
+    $query = new EntityFieldQuery();
+    $query
+      ->entityCondition('entity_type', $entity_type)
+      ->entityCondition('bundle', array_keys(zariz_get_group_content_bundles($entity_type)))
+      ->entityCondition('entity_id', $last_id, '<=')
+      ->fieldCondition('field_branch', 'target_id', $branch_id);
+
+    // Snapshot has a parent, so don't include its values.
+    if (!empty($snapshot->parent_sid)) {
+      $parent_wrapper = entity_metadata_wrapper('snapshot', $snapshot->parent_sid);
+      $query->entityCondition('entity_id', $parent_wrapper->{$last_id_field_name}->getIdentifier(), '>');
+    }
+
+    $result = $query->execute();
+
+    if (empty($result[$entity_type])) {
+      continue;
+    }
+
+    foreach (array_keys($result[$entity_type]) as $id) {
+      // We want to avoid entity load just for the getting the path.
+      // @todo: deal with taxonomy/term/[id]
+      $urls[] = drupal_get_path_alias($entity_type . '/' . $id);
+    }
+  }
+
+  $return['insert'] = $urls;
+  return $return;
 }
 
 /**

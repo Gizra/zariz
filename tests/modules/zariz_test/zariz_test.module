@@ -1,0 +1,16 @@
+<?php
+
+/**
+ * @file
+ * Test module for Zariz.
+ */
+
+
+/**
+ * Implements hook_entity_info_alter().
+ */
+function zariz_test_entity_info_alter(&$entity_info) {
+  $entity_info['entity_test']['zariz'] = array(
+    'last id field name' => 'field_last_entity_test',
+  );
+}

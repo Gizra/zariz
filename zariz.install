@@ -118,7 +118,7 @@ function zariz_install() {
       field_create_field($field);
     }
 
-    if (!field_info_instance('node', $field_name, 'branch')) {
+    if (!field_info_instance($value['entity_type'], $field_name, $value['bundle'])) {
       $instance = array(
         'entity_type' => $value['entity_type'],
         'field_name' => $field_name,

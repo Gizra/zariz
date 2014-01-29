@@ -284,6 +284,8 @@ function zariz_ui_page_build(&$page) {
     }
   }
 
+  drupal_alter('zariz_ui_toolbar_links', $items, $branch_id);
+
   $page['page_bottom']['zariz_ui']['#markup'] = '<div id="zariz">' . theme('item_list', array('items' => $items)) . '</div>';
   $page['page_bottom']['zariz_ui']['#attached'] = array();
 
