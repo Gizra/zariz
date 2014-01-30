@@ -12,6 +12,10 @@
  * Panel page.
  */
 function zariz_example_install() {
+  // Enable the node override of page manager.
+  variable_get('page_manager_node_view_disabled', FALSE);
+
+  // Set the front page.
   variable_set('site_frontpage', 'homepage');
 
   if (variable_get('zariz_master_branch')) {
@@ -22,4 +26,6 @@ function zariz_example_install() {
   // Create a brach using the user ID 1.
   $account = user_load(1);
   zariz_create_branch('live', NULL, $account);
+
+
 }
