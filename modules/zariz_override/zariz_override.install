@@ -1,0 +1,68 @@
+<?php
+
+/**
+ * @file
+ * Install, update, and uninstall functions for the Zariz Override module.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function zariz_override_schema() {
+  $schema = array();
+  $schema['zariz_override'] = array(
+    'description' => 'Object overrides per branch.',
+    'fields' => array(
+      'id' => array(
+        'description' => 'Primary Key: Unique ID.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+      ),
+      'nid' => array(
+        'description' => 'The branch node ID.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'sid' => array(
+        'description' => 'The Snapshot ID.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'object_type' => array(
+        'description' => 'The override object type (e.g. variable, views).',
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+      ),
+      'object_id' => array(
+        'description' => 'The override object id.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'value' => array(
+        'description' => 'Serialized branch specific override values.',
+        'type' => 'text',
+        'serial' => TRUE,
+      ),
+    ),
+    'primary key' => array('id'),
+    'indexes' => array(
+      'nid' => array('nid'),
+    ),
+    'foreign keys' => array(
+      'node' => array(
+        'table' => 'node',
+        'columns' => array('nid' => 'nid'),
+      ),
+      'zariz_snapshot' => array(
+        'table' => 'zariz_snapshot',
+        'columns' => array('sid' => 'sid'),
+      ),
+    ),
+  );
+
+  return $schema;
+}

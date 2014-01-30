@@ -1,0 +1,146 @@
+<?php
+
+/**
+ * @file
+ * Allow overriding configuration per branch.
+ */
+
+/**
+ * Get overrides of a specific branch.
+ *
+ * @param $branch_id
+ *   The branch ID.
+ * @param $object_type
+ *   The object type to be overriden, for example "variable" or "views".
+ * @param array $object_ids
+ *   optional; Array of object IDs, for example the variable keys.
+ * @param $get_branch_parents
+ *   optional; Determines if the entire branch parents should be fetched, or
+ *   just the provided branch ID. Defaults to TRUE.
+ * @param $sid
+ *   optional; The minimum Snapshot ID. This can be used only if
+ *   $get_branch_parents is set to FALSE.
+ *
+ * @return Array
+ *   Array of overrides.
+ */
+function zariz_override_get_overrides($branch_id, $object_type, $object_ids = array(), $get_branch_parents = TRUE, $sid = NULL) {
+  $branch_ids = zariz_get_branch_parents_ids($branch_id);
+
+  $query = db_select('zariz_override', 'zro');
+  $query
+    ->fields('zro', array('object_id', 'value'))
+    ->condition('nid', $branch_ids, 'IN')
+    ->condition('object_type', $object_type);
+
+  if (count($branch_ids) > 1) {
+    // Order by group IDs, where the current branch is the first one, and the
+    // parent(s) are by order.
+    // We reverse the order of the parents, so when the array is created, the
+    // current branch's value will override prior ones.
+    $query->addExpression('FIELD (nid, :args)', 'order_by_gid', array(':args' => array_reverse($branch_ids)));
+    // Group by the object ID, so we have the most up to date overrides.
+    $query->orderBy('order_by_gid');
+  }
+
+  if ($object_ids) {
+    $query->condition('object_id', $object_ids, 'IN');
+  }
+
+  if (!$get_branch_parents && $sid) {
+    $query->condition('sid', $sid, '>=');
+  }
+
+  $result = $query
+    ->execute()
+    ->fetchAllKeyed();
+
+  return $result;
+
+}
+
+/**
+ * Set overrides for a specific branch.
+ *
+ * @param $branch_id
+ *   The branch ID.
+ * @param $object_type
+ *   The object type to be overriden, for example "variable" or "views".
+ * @param array $object_ids
+ *   The object ID, for example the variable key.
+ * @param $value
+ *   The override value.
+ * @param Snapshot $snapshot
+ *   optional; The Snapshot entity. If NULL, then the latest Snapshot would be
+ *   used.
+ */
+function zariz_override_set_override($branch_id, $object_type, $object_id, $value, Snapshot $snapshot = NULL) {
+  $snapshot = $snapshot ? $snapshot : zariz_get_snapshot_from_branch($branch_id);
+
+  $values = array(
+    'nid' => $branch_id,
+    'sid' => $snapshot->sid,
+    'object_type' => $object_type,
+    'object_id' => $object_id,
+    'value' => $value,
+  );
+
+  // Delete previous record, if exists.
+  db_delete('zariz_override')
+    ->condition('nid', $branch_id)
+    ->condition('sid', $snapshot->sid)
+    ->condition('object_type', $object_type)
+    ->condition('object_id', $object_id)
+    ->execute();
+
+  drupal_write_record('zariz_override', $values);
+}
+
+/**
+ * Implements hook_init().
+ *
+ * @code
+ *   zariz_override_set_override(1, 'variable', 'site_name', 'Zariz Rules');
+ * @endcode
+ */
+function zariz_override_init() {
+  global $conf;
+  if (!$og_context = og_context()) {
+    // Not in a branch context.
+    return;
+  }
+  $branch_id = $og_context['gid'];
+  if (!$overrides = zariz_override_get_overrides($branch_id, 'variable')) {
+    // No overrides.
+    return;
+  }
+
+  foreach ($overrides as $key => $value) {
+    // Set the override.
+    $conf[$key] = $value;
+  }
+}
+
+
+/**
+ * Implements hook_views_pre_view().
+ *
+ * @code
+ *   zariz_override_set_override(1, 'views', 'view_name:display_id', 'new_display_id');
+ * @endcode
+ */
+function zariz_override_views_pre_view(&$view, &$display_id, &$args) {
+  if (!$og_context = og_context()) {
+    // Not in a branch context.
+    return;
+  }
+  $branch_id = $og_context['gid'];
+  $object_id = array($view->name . ':' . $display_id);
+  if (!$overrides = zariz_override_get_overrides($branch_id, 'views', $object_id)) {
+    // No overrides.
+    return;
+  }
+
+  $override = reset($overrides);
+  $view->set_display($override);
+}
