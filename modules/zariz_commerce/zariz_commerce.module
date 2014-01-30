@@ -26,6 +26,12 @@ function zariz_commerce_product_form_wrapper($product) {
   $clone_product = clone $product;
   if ($og_context = og_context()) {
     $branch_id = $og_context['gid'];
+
+    if (zariz_is_master_branch($branch_id) && variable_get('zariz_ui_deny_crud_on_master', TRUE)) {
+      drupal_set_message(t('You are not allowed to edit a Commerce product as this is the "master" branch.'), 'warning');
+      drupal_goto();
+    }
+
     // If the product belongs to another branch, then it should be cloned
     // instead of edited.
     $wrapper = entity_metadata_wrapper('commerce_product', $clone_product);
@@ -43,7 +49,7 @@ function zariz_commerce_product_form_wrapper($product) {
         $wrapper->field_uuid->set($clone_product->sku);
       }
 
-      $clone_product->sku .= $original_sku . ':' . $wrapper->field_branch->getIdentifier();
+      $clone_product->sku = $original_sku . ':' . $wrapper->field_branch->getIdentifier();
     }
   }
 
