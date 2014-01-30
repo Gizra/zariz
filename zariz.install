@@ -44,6 +44,15 @@ function zariz_schema() {
       ),
     ),
     'primary key' => array('sid'),
+    'indexes' => array(
+      'nid' => array('nid'),
+    ),
+    'foreign keys' => array(
+      'node' => array(
+        'table' => 'node',
+        'columns' => array('nid' => 'nid'),
+      ),
+    ),
   );
 
   return $schema;
