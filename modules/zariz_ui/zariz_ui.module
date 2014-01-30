@@ -133,14 +133,27 @@ function zariz_ui_merge_branch_access($node, $token) {
 }
 
 /**
- * Page callback; Merge branch to its parent branch.
+ * Page callback; Merge branch to its parent branch, and redirect to the parent.
  *
  * @param $node
  *   The branch node object.
  */
 function zariz_ui_merge_branch($node) {
   zariz_merge_branch($node->nid);
-  drupal_goto('node/' . $node->nid);
+
+  $wrapper = entity_metadata_wrapper('node', $node);
+  $parent_id = $wrapper->field_parent_branch->getIdentifier();
+
+  // Redirect to the master branch.
+  $purl_params = array(
+    'query' => drupal_get_query_parameters($_GET, array('q')),
+    'purl' => array(
+      'provider' => "og_purl|node",
+      'id' => $parent_id,
+    ),
+  );
+  unset($_GET['destination']);
+  purl_goto('<front>', $purl_params);
 }
 
 /**
