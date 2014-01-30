@@ -134,12 +134,14 @@ function zariz_example_default_page_manager_handlers() {
     $pane->shown = TRUE;
     $pane->access = array();
     $pane->configuration = array(
-      'label' => 'title',
-      'formatter' => 'commerce_price_formatted_components',
+      'label' => 'hidden',
+      'formatter' => 'commerce_price_formatted_amount',
       'delta_limit' => 0,
       'delta_offset' => '0',
       'delta_reversed' => FALSE,
-      'formatter_settings' => array(),
+      'formatter_settings' => array(
+        'calculation' => '0',
+      ),
       'context' => 'relationship_entity_from_field:field_zariz_product-node-commerce_product_1',
       'override_title' => 0,
       'override_title_text' => '',
@@ -162,7 +164,7 @@ function zariz_example_default_page_manager_handlers() {
     $pane->shown = TRUE;
     $pane->access = array();
     $pane->configuration = array(
-      'label' => 'title',
+      'label' => 'hidden',
       'formatter' => 'commerce_cart_add_to_cart_form',
       'delta_limit' => '0',
       'delta_offset' => '0',
