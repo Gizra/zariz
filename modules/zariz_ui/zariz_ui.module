@@ -144,6 +144,12 @@ function zariz_ui_merge_branch($node) {
   $wrapper = entity_metadata_wrapper('node', $node);
   $parent_id = $wrapper->field_parent_branch->getIdentifier();
 
+  $params = array(
+    '@from' => $wrapper->label(),
+    '@to' => $wrapper->field_parent_branch->label(),
+  );
+  drupal_set_message('Branch @from was merged to @to.', $params);
+
   // Redirect to the master branch.
   $purl_params = array(
     'query' => drupal_get_query_parameters($_GET, array('q')),

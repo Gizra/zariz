@@ -49,7 +49,7 @@ function zariz_commerce_product_form_wrapper($product) {
         $wrapper->field_uuid->set($clone_product->sku);
       }
 
-      $clone_product->sku .= $original_sku . ':' . $wrapper->field_branch->getIdentifier();
+      $clone_product->sku = $original_sku . ':' . $wrapper->field_branch->getIdentifier();
     }
   }
 
