@@ -183,7 +183,7 @@ function zariz_commerce_modules_enabled($modules) {
         ),
         'field_name' => $field_name,
         'type' => 'entityreference',
-        'cardinality' => FIELD_CARDINALITY_UNLIMITED,
+        'cardinality' => 1,
       );
       field_create_field($field);
     }
