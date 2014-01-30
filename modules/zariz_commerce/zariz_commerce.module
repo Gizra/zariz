@@ -193,7 +193,7 @@ function zariz_commerce_modules_enabled($modules) {
         'entity_type' => 'node',
         'field_name' => $field_name,
         'bundle' => 'article',
-        'label' => 'Products',
+        'label' => 'Product',
         'widget' => array(
           'module' => 'options',
           'type' => 'options_select',
