@@ -148,7 +148,7 @@ function zariz_ui_merge_branch($node) {
     '@from' => $wrapper->label(),
     '@to' => $wrapper->field_parent_branch->label(),
   );
-  drupal_set_message('Branch @from was merged to @to.', $params);
+  drupal_set_message(t('Branch @from was merged to @to.', $params));
 
   // Redirect to the master branch.
   $purl_params = array(
