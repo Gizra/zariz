@@ -45,6 +45,11 @@ function zariz_ui_menu_alter(&$items) {
  *   The node object.
  */
 function zariz_ui_node_page_edit($node) {
+  if (!zariz_is_bundle_tracked('node', $node->type)) {
+    module_load_include('inc', 'node', 'node.pages');
+    return node_page_edit($node);
+  }
+
   $og_context = og_context();
   $branch_id = $og_context['gid'];
 
@@ -97,6 +102,32 @@ function zariz_ui_og_permission() {
  */
 function zariz_ui_form_branch_node_form_alter(&$form, $form_state) {
   unset($form['og_purl']);
+
+  if (empty($form['#node']->nid)) {
+    $form['#validate'][] = 'zariz_ui_branch_node_form_validate';
+  }
+}
+
+/**
+ * Validate handler; Make sure the branch title is unique.
+ */
+function zariz_ui_branch_node_form_validate($form, &$form_state) {
+  $title = $form_state['values']['title'];
+  $query = new EntityFieldQuery();
+  $result = $query
+    ->entityCondition('entity_type', 'node')
+    ->entityCondition('bundle', 'branch')
+    ->propertyCondition('title', $title)
+    ->range(0, 1)
+    ->execute();
+
+  if (empty($result['node'])) {
+    // No duplicates.
+    return;
+  }
+
+  $nid = key($result['node']);
+  form_set_error('title', t('Branch !title already exists.', array('!title' => l($title, 'node/' . $nid))));
 }
 
 /**
