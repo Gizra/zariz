@@ -18,3 +18,6 @@ files[] = tests/merge.test
 files[] = tests/mergeConflicts.test
 files[] = tests/snapshot.test
 files[] = tests/queryAlter.test
+
+; simplytest.me integration - auto-enable the example module
+simplytest_dependencies[] = zariz_example
