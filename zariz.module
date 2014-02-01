@@ -1704,12 +1704,7 @@ function zariz_ctools_context_create_entity($empty, $data = NULL, $conf = FALSE,
 
   $entity_type = $context->type[2];
   $entity = &$context->data;
-  list(,, $bundle) = entity_extract_ids($entity_type, $entity);
-
-  if (zariz_is_bundle_tracked($entity_type, $bundle)) {
-    // Bundle is tracked by Zariz.
-    zariz_adjust_entity_reference_fields($entity_type, $entity);
-  }
+  zariz_adjust_entity_reference_fields($entity_type, $entity);
 
   return $context;
 }
