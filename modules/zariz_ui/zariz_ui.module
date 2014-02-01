@@ -208,17 +208,16 @@ function zariz_ui_preprocess_html(&$variables) {
  * Add Zariz toolbar.
  */
 function zariz_ui_page_build(&$page) {
-  if (strpos($_GET['q'], 'admin/') === 0) {
-    // Admin pages.
-    return;
-  }
-
   if (strpos($_GET['q'], 'batch') === 0) {
     // Batch process.
     return;
   }
 
-  zariz_ui_purl_redirect_by_context();
+  if (strpos($_GET['q'], 'admin/') !== 0) {
+    // Admin pages.
+    zariz_ui_purl_redirect_by_context();
+  }
+
 
   if (!$og_context = og_context()) {
     // No OG context.
