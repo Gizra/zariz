@@ -1691,7 +1691,7 @@ function zariz_ctools_plugin_pre_alter(&$plugin, &$info) {
 }
 
 /**
- * Adjust to loaded entity of a CTools context.
+ * Adjust the loaded entity of a CTools context.
  *
  * @see tools_context_create_entity().
  */
