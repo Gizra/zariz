@@ -1,6 +1,7 @@
 name = Zariz UI
 description = User interface for Zariz.
 core = 7.x
+package = Zariz
 
 dependencies[] = clone
 dependencies[] = entityreference_prepopulate

@@ -1,6 +1,7 @@
 name = Zariz Override
 description = Allow overriding configuration per branch.
 core = 7.x
+package = Zariz
 
 dependencies[] = zariz
 
