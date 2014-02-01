@@ -28,8 +28,24 @@ html {
   body.zariz-toolbar {
     margin-top: 70px !important;
 
+    &.toolbar {
+      // Toolbar is present, push Zariz toolbar further down.
+
+      #zariz {
+        top: 30px;
+      }
+
+      &.toolbar-drawer {
+        // Drawer is open
+
+        #zariz {
+          top: 66px;
+        }
+      }
+    }
+
     &.admin-menu {
-      // In case admin menu is present push it further down.
+      // Admin menu is present, push Zariz toolbar further down.
       margin-top: 100px !important;
 
       #zariz {

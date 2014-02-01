@@ -15,6 +15,10 @@
 
 html body.zariz-toolbar {
   margin-top: 70px !important; }
+  html body.zariz-toolbar.toolbar #zariz {
+    top: 30px; }
+  html body.zariz-toolbar.toolbar.toolbar-drawer #zariz {
+    top: 66px; }
   html body.zariz-toolbar.admin-menu {
     margin-top: 100px !important; }
     html body.zariz-toolbar.admin-menu #zariz {
