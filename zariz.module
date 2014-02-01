@@ -1514,6 +1514,12 @@ function zariz_entity_prepare_view($entities, $type, $langcode) {
  *   will be used.
  */
 function zariz_adjust_entity_reference_fields($entity_type, $entity, $langcode = NULL, $branch_id = NULL) {
+  if (!empty($entity->zariz_adjust_refernce_fields)) {
+    // Entity was already adjusted.
+    return $entity;
+  }
+
+  $entity->zariz_adjust_refernce_fields = TRUE;
   $entity_info = entity_get_info($entity_type);
   if (empty($entity_info['zariz'])) {
     return;
@@ -1671,4 +1677,39 @@ function zariz_field_widget_form_alter(&$element, &$form_state, $context) {
     ->execute();
 
   $element['#default_value'] = array_keys($result[$target_type]);
+}
+
+/**
+ * Implements hook_ctools_plugin_pre_alter().
+ */
+function zariz_ctools_plugin_pre_alter(&$plugin, &$info) {
+  if (empty($plugin['context']) || $plugin['context'] != 'ctools_context_create_entity') {
+    return;
+  }
+
+  $plugin['context'] = 'zariz_ctools_context_create_entity';
+}
+
+/**
+ * Adjust to loaded entity of a CTools context.
+ *
+ * @see tools_context_create_entity().
+ */
+function zariz_ctools_context_create_entity($empty, $data = NULL, $conf = FALSE, $plugin) {
+  $context = ctools_context_create_entity($empty, $data, $conf, $plugin);
+  if (empty($context->data)) {
+    // No entity exists.
+    return $context;
+  }
+
+  $entity_type = $context->type[2];
+  $entity = &$context->data;
+  list(,, $bundle) = entity_extract_ids($entity_type, $entity);
+
+  if (zariz_is_bundle_tracked($entity_type, $bundle)) {
+    // Bundle is tracked by Zariz.
+    zariz_adjust_entity_reference_fields($entity_type, $entity);
+  }
+
+  return $context;
 }
