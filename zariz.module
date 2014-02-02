@@ -1484,7 +1484,7 @@ function zariz_views_api($module, $api) {
  */
 function zariz_ctools_plugin_directory($module, $plugin) {
   if ($module == 'entityreference') {
-    return $module . '/' . $plugin;
+    return "plugins/entityreference/$plugin";
   }
 }
 

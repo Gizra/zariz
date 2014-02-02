@@ -144,3 +144,12 @@ function zariz_override_views_pre_view(&$view, &$display_id, &$args) {
   $override = reset($overrides);
   $view->set_display($override);
 }
+
+/**
+ * Implements hook_ctools_plugin_directory().
+ */
+function zariz_override_ctools_plugin_directory($module, $plugin) {
+  if ($module == 'ctools') {
+    return 'plugins/' . $plugin;
+  }
+}
