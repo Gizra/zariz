@@ -1283,7 +1283,7 @@ function zariz_field_create_instance($instance) {
   // via Drush.
   ctools_include('plugins');
   ctools_get_plugins_reset();
-  module_load_include('php', 'zariz', 'entityreference/behavior/ZarizEntityReferenceBehavior.class');
+  module_load_include('php', 'zariz', 'plugins/entityreference/behavior/ZarizEntityReferenceBehavior.class');
   ctools_get_plugins('entityreference', 'behavior');
 
   // Add "Original branch" field.
