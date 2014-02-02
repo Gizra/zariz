@@ -61,9 +61,9 @@ function zariz_override_ctools_check_override($conf, $context) {
  */
 function zariz_override_ctools_access_summary($conf, $context) {
   $params = array(
-    '@type' => $conf['object_type'],
-    '@id' => $conf['object_id'],
+    '@object_type' => $conf['object_type'],
+    '@object_id' => $conf['object_id'],
   );
-  return t('@identifier has overrides form "@type with ID @id"', $params);
+  return t('Zariz overrides @object_type with ID @object_id.', $params);
 }
 
