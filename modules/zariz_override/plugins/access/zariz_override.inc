@@ -11,7 +11,7 @@ $plugin = array(
   'description' => t('Determine if override is defined for the objecy.'),
   'callback' => 'zariz_override_ctools_check_override',
   'default' => array(
-    'object_type' => '',
+    'object_type' => 'variable',
     'object_id' => '',
   ),
   'settings form' => 'zariz_override_ctools_access_settings',
@@ -23,18 +23,18 @@ $plugin = array(
  */
 function zariz_override_ctools_access_settings($form, &$form_state, $conf) {
   $form['settings']['object_type'] = array(
-    '#type' => 'text',
+    '#type' => 'textfield',
     '#title' => t('Object type'),
     '#default_value' => $conf['object_type'],
-    '#description' => t('Only users with the selected permission flag, in the specified group, will be able to access this.'),
+    '#description' => t('Select the object type, e.g. "varialbe".'),
     '#required' => TRUE,
   );
 
   $form['settings']['object_id'] = array(
-    '#type' => 'text',
+    '#type' => 'textfield',
     '#title' => t('Object ID'),
     '#default_value' => $conf['object_id'],
-    '#description' => t('Only users with the selected permission flag, in the specified group, will be able to access this.'),
+    '#description' => t('Select the object ID, e.g. "site_info".'),
     '#required' => TRUE,
   );
 
