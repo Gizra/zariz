@@ -88,12 +88,7 @@ Unless stated otherwise, use latest release version is required.
 "Zariz commerce" module integrates with commerce and allows smart revisioning
 of commerce products.
 In order to be able to "Add to cart" from the reference field, [this](https://drupal.org/node/1679852) soon-to-be
-merged patch is needed. You can apply it using:
-
-```bash
-curl -O https://drupal.org/files/entityreference_instead_of_product_reference.patch
-patch -p1 < entityreference_instead_of_product_reference.patch
-```
+merged patch is needed.
 
 ## Typical permissions setup
 
