@@ -146,10 +146,8 @@ function zariz_override_views_pre_view(&$view, &$display_id, &$args) {
 }
 
 /**
- * Implements hook_ctools_plugin_directory().
+ * Implements hook_query_TAG_alter().
  */
-function zariz_override_ctools_plugin_directory($module, $plugin) {
-  if ($module == 'ctools') {
-    return 'plugins/' . $plugin;
-  }
+function zariz_override_query_ctools_export_load_object_alter(QueryAlterableInterface $query) {
+  $query->condition('name', array('page_homepage_panel_context'), 'NOT IN');
 }
