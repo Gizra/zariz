@@ -45,7 +45,8 @@ function zariz_override_ctools_access_settings($form, &$form_state, $conf) {
  * Check for access.
  */
 function zariz_override_ctools_check_override($conf, $context) {
-  if ($og_context = og_context()) {
+  if (!$og_context = og_context()) {
+    // No context, so allow access.
     return TRUE;
   }
 
