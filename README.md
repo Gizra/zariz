@@ -77,12 +77,11 @@ The same query tag can be also used in Views. For example in ``/admin/structure/
 
 ## Dependencies
 
-Unless stated otherwise, use latest release version is required.
-
 * [Entity reference prepopualte](https://drupal.org/project/entityreference_prepopulate)
-* [Organic groups](https://drupal.org/project/og) (Dev version until [this](https://drupal.org/node/2162861) bug in Drupal.org release managment is fixed)
-* [Replicate](https://drupal.org/project/replicate)
 * [Node clone](https://drupal.org/project/node_clone)
+* [Organic groups](https://drupal.org/project/og)
+* [Replicate](https://drupal.org/project/replicate)
+
 
 ### Commerce integration
 "Zariz commerce" module integrates with commerce and allows smart revisioning
