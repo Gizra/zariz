@@ -20,4 +20,5 @@ projects[replicate][patch][] = https://drupal.org/files/replicate-2098341-01-php
 projects[rules] = 2.6
 projects[views] = 3.3
 projects[views_bulk_operations] = 3.2
+projects[zariz] = 1.x-dev
 
