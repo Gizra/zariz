@@ -151,9 +151,11 @@ function zariz_commerce_modules_enabled($modules) {
     $og_field['instance']['settings']['behaviors']['prepopulate'] = array(
       'action' => 'hide',
       'fallback' => 'redirect',
-      'og_context' => TRUE,
       'action_on_edit' => TRUE,
       'status' => TRUE,
+      'providers' => array(
+        'og_context' => TRUE,
+      ),
     );
 
     og_create_field('field_branch', 'commerce_product', 'product', $og_field);
