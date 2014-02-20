@@ -1296,9 +1296,11 @@ function zariz_field_create_instance($instance) {
   $og_field['instance']['settings']['behaviors']['prepopulate'] = array(
     'action' => 'hide',
     'fallback' => 'redirect',
-    'og_context' => TRUE,
     'action_on_edit' => TRUE,
     'status' => TRUE,
+    'providers' => array(
+      'og_context' => TRUE,
+    ),
   );
 
   og_create_field('field_branch', $entity_type, $bundle, $og_field);
@@ -1459,9 +1461,11 @@ function zariz_modules_enabled($modules) {
     $og_field['instance']['settings']['behaviors']['prepopulate'] = array(
       'action' => 'hide',
       'fallback' => 'redirect',
-      'og_context' => TRUE,
       'action_on_edit' => TRUE,
       'status' => TRUE,
+      'providers' => array(
+        'og_context' => TRUE,
+      ),
     );
 
 
