@@ -12,7 +12,7 @@ The counterpart of Zariz which is responsible for the static site creation is
 
 ## Live Demo
 
-1. Launch a sandbox in http://simplytest.me/project/zariz
+1. Launch a sandbox in http://simplytest.me/project/zariz/7.x-1.x
 2. Navigate to ``/live/user`` and login (user: admin pass: admin)
 3. Navigate to ``admin/content/migrate`` and migate the content
 4. Back in the homepage, you can now branch, create and edit content, and merge
