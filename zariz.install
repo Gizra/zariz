@@ -72,8 +72,8 @@ function zariz_install() {
       'label' => 'Parent branch',
       'target_type' => 'node',
       'target_bundles' => array('branch'),
+      'default_value_function' => 'entityreference_prepopulate_field_default_value',
       'instance_settings' => array(
-        'default_value_function' => 'entityreference_prepopulate_field_default_value',
         // Add entity reference prepopulate.
         'behaviors' => array(
           'prepopulate' => array(
@@ -112,6 +112,7 @@ function zariz_install() {
       'bundle' => 'branch',
       'cardinality' => 1,
       'instance_settings' => array(),
+      'default_value_function' => '',
     );
     if (!field_info_field($field_name)) {
       $field = array(
@@ -138,6 +139,11 @@ function zariz_install() {
         'label' => $value['label'],
         'settings' => $value['instance_settings'],
       );
+
+      if (!empty($value['default_value_function'])) {
+        $instance['default_value_function'] = $value['default_value_function'];
+      }
+
       field_create_instance($instance);
     }
   }

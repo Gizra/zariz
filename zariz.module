@@ -1290,7 +1290,7 @@ function zariz_field_create_instance($instance) {
   // @todo: Target bundle to "Branch".
   $og_field = og_fields_info(OG_AUDIENCE_FIELD);
   $og_field['field']['cardinality'] = 1;
-  $og_field['field']['default_value_function'] = 'entityreference_prepopulate_field_default_value';
+  $og_field['instance']['default_value_function'] = 'entityreference_prepopulate_field_default_value';
   $og_field['instance']['label'] = 'Branch';
   $og_field['instance']['required'] = TRUE;
   // Add entity reference prepopulate.
@@ -1456,7 +1456,7 @@ function zariz_modules_enabled($modules) {
     $og_field = og_fields_info(OG_AUDIENCE_FIELD);
     $og_field['field']['cardinality'] = 1;
     $og_field['field']['settings']['handler'] = 'og';
-    $og_field['field']['default_value_function'] = 'entityreference_prepopulate_field_default_value';
+    $og_field['instance']['default_value_function'] = 'entityreference_prepopulate_field_default_value';
     $og_field['instance']['label'] = 'Branch';
     $og_field['instance']['required'] = TRUE;
     // Add entity reference prepopulate.
