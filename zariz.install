@@ -73,6 +73,7 @@ function zariz_install() {
       'target_type' => 'node',
       'target_bundles' => array('branch'),
       'instance_settings' => array(
+        'default_value_function' => 'entityreference_prepopulate_field_default_value',
         // Add entity reference prepopulate.
         'behaviors' => array(
           'prepopulate' => array(
