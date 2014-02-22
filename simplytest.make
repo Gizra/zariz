@@ -13,6 +13,7 @@ projects[entityreference_prepopulate] = 1.5
 projects[node_clone] = 1.0-rc2
 projects[og] = 2.5
 projects[og_purl] = 1.2
+projects[purl] = 1.x-dev
 
 projects[replicate] = 1.0
 projects[replicate][patch][] = https://drupal.org/files/replicate-2098341-01-php-warning.patch
