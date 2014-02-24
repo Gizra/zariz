@@ -88,13 +88,12 @@ The same query tag can be also used in Views. For example in ``/admin/structure/
 * [Node clone](https://drupal.org/project/node_clone)
 * [Organic groups](https://drupal.org/project/og)
 * [Replicate](https://drupal.org/project/replicate)
+* (optional) [Commerce](https://drupal.org/project/commerce) - dev version
 
 
 ### Commerce integration
 "Zariz commerce" module integrates with commerce and allows smart revisioning
 of commerce products.
-In order to be able to "Add to cart" from the reference field, [this](https://drupal.org/node/1679852) soon-to-be
-merged patch is needed.
 
 ## Typical permissions setup
 
