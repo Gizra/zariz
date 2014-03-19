@@ -11,6 +11,7 @@ dependencies[] = page_manager
 dependencies[] = panels
 dependencies[] = views
 dependencies[] = views_content
+dependencies[] = zariz_static
 dependencies[] = zariz_ui
 features[ctools][] = page_manager:pages_default:1
 features[ctools][] = views:views_default:3.0
