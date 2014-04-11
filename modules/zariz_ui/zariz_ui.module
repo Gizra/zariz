@@ -234,11 +234,12 @@ function zariz_ui_preprocess_html(&$variables) {
 }
 
 /**
- * Implements hook_page_build().
+ * Implements hook_init().
  *
- * Add Zariz toolbar.
+ * Redirect or set context.
+ *
  */
-function zariz_ui_page_build(&$page) {
+function zariz_ui_init() {
   if (strpos($_GET['q'], 'batch') === 0) {
     // Batch process.
     return;
@@ -248,7 +249,19 @@ function zariz_ui_page_build(&$page) {
     // Admin pages.
     zariz_ui_purl_redirect_by_context();
   }
+}
 
+
+/**
+ * Implements hook_page_build().
+ *
+ * Add Zariz toolbar.
+ */
+function zariz_ui_page_build(&$page) {
+  if (strpos($_GET['q'], 'batch') === 0) {
+    // Batch process.
+    return;
+  }
 
   if (!$og_context = og_context()) {
     // No OG context.
@@ -392,15 +405,22 @@ function zariz_ui_purl_redirect_by_context() {
     return;
   }
 
-  // Redirect to the master branch.
-  $purl_params = array(
-    'query' => drupal_get_query_parameters($_GET, array('q')),
-    'purl' => array(
-      'provider' => "og_purl|node",
-      'id' => $id,
-    ),
-  );
-  unset($_GET['destination']);
-  purl_goto('<front>', $purl_params);
+  if (variable_get('zariz_ui_redirect_tom_master', TRUE)) {
+    // Redirect to the master branch.
+    $purl_params = array(
+      'query' => drupal_get_query_parameters($_GET, array('q')),
+      'purl' => array(
+        'provider' => "og_purl|node",
+        'id' => $id,
+      ),
+    );
+    unset($_GET['destination']);
+    purl_goto('<front>', $purl_params);
+  }
+  else {
+    // Set the context, without redirect.
+    $node = node_load($id);
+    og_context('node', $node);
+  }
 }
 
