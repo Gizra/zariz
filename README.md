@@ -13,6 +13,7 @@ The counterpart of Zariz which is responsible for the static site creation is
 
 * [Zariz in pics](http://www.gizra.com/content/zariz-in-pics/)
 * [Drupal, only x5 faster](http://www.gizra.com/content/drupal-x5-faster/)
+* Video - [Modules Unraveled Podcast](https://modulesunraveled.com/podcast/103-content-branching-and-static-site-generation-using-zariz-amitai-burstein-modules)
 * Video - [jam's Drupal Camp session: Zariz - Continuous Deployment for Content](http://www.youtube.com/watch?v=vGUSXwURVVo&feature=share)
 
 ## Live Demo
