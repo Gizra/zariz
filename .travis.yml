@@ -30,10 +30,7 @@ before_script:
   - cd zariz/drupal
   - drush dl og -y
   - drush en og_context og_purl -y
-  # Hack to fix Replicate's module strict warning.
   - drush dl replicate
-  - curl -O https://drupal.org/files/replicate-2098341-01-php-warning.patch
-  - patch -p1 /home/travis/build/zariz/drupal/sites/all/modules/replicate/replicate.module < replicate-2098341-01-php-warning.patch
   - drush --yes pm-enable zariz
 
   # start a web server on port 8080, run in the background; wait for initialization
