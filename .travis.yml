@@ -32,7 +32,7 @@ before_script:
   - drush en og_context og_purl -y
   # Hack to fix Replicate's module strict warning.
   - drush dl replicate
-  - curl -O https://drupal.org/files/replicate-2098341-01-php-warning.patch
+  - curl -O https://www.drupal.org/files/replicate-2098341-01-php-warning.patch
   - patch -p1 /home/travis/build/zariz/drupal/sites/all/modules/replicate/replicate.module < replicate-2098341-01-php-warning.patch
   - drush --yes pm-enable zariz
 
