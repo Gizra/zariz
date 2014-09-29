@@ -245,10 +245,17 @@ function zariz_ui_init() {
     return;
   }
 
-  if (strpos($_GET['q'], 'admin/') !== 0) {
+  if (strpos($_GET['q'], 'admin/') === 0) {
     // Admin pages.
-    zariz_ui_purl_redirect_by_context();
+    return;
   }
+
+  if (strpos($_GET['q'], 'js/admin_menu/cache') === 0) {
+    // Admin menu JS cache.
+    return;
+  }
+
+  zariz_ui_purl_redirect_by_context();
 }
 
 
