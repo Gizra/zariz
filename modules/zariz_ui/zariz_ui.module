@@ -381,6 +381,10 @@ function zariz_ui_toolbar_access() {
  * Helper function; Redirect to correct PURL, by context or lack of one.
  */
 function zariz_ui_purl_redirect_by_context() {
+  if (drupal_is_cli()) {
+    return;
+  }
+
   if (!$og_context = og_context()) {
     if (!$master_nid = variable_get('zariz_master_branch')) {
       return;
