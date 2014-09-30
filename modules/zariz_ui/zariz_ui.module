@@ -245,10 +245,17 @@ function zariz_ui_init() {
     return;
   }
 
-  if (strpos($_GET['q'], 'admin/') !== 0) {
+  if (strpos($_GET['q'], 'admin/') === 0) {
     // Admin pages.
-    zariz_ui_purl_redirect_by_context();
+    return;
   }
+
+  if (strpos($_GET['q'], 'js/admin_menu/cache') === 0) {
+    // Admin menu JS cache.
+    return;
+  }
+
+  zariz_ui_purl_redirect_by_context();
 }
 
 
@@ -381,6 +388,10 @@ function zariz_ui_toolbar_access() {
  * Helper function; Redirect to correct PURL, by context or lack of one.
  */
 function zariz_ui_purl_redirect_by_context() {
+  if (drupal_is_cli()) {
+    return;
+  }
+
   if (!$og_context = og_context()) {
     if (!$master_nid = variable_get('zariz_master_branch')) {
       return;
