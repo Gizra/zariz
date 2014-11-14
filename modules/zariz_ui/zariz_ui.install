@@ -34,5 +34,5 @@ function zariz_ui_install() {
  */
 function zariz_ui_uninstall() {
   variable_del('zariz_ui_deny_crud_on_master');
-  variable_del('zariz_ui_redirect_tom_master');
+  variable_del('zariz_ui_redirect_to_master');
 }
