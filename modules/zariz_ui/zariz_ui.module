@@ -239,32 +239,48 @@ function zariz_ui_preprocess_html(&$variables) {
  * Redirect or set OG context.
  */
 function zariz_ui_init() {
-  if (strpos($_GET['q'], 'batch') === 0) {
-    // Batch process.
-    return;
-  }
-
-  if ($_GET['q'] == 'admin' || strpos($_GET['q'], 'admin/') === 0) {
-    // Admin pages.
-    return;
-  }
-
-  if (strpos($_GET['q'], 'admin_menu/') === 0) {
-    // Admin menu pages.
-    return;
-  }
-
-  if (strpos($_GET['q'], 'js/admin_menu/cache') === 0) {
-    // Admin menu JS cache.
-    return;
-  }
-
-  if (strpos($_GET['q'], 'system/ajax') === 0) {
-    // Admin menu JS cache.
+  $result = module_invoke_all('zariz_ui_prevent_redirect', $_GET['q']);
+  if (!empty($result) && in_array(TRUE, $result)) {
+    // At least one request has been made to prevent redirection.
     return;
   }
 
   zariz_ui_purl_redirect_by_context();
+}
+
+/**
+ * Implements hook_zariz_ui_prevent_redirect().
+ */
+function zariz_ui_zariz_ui_prevent_redirect($url) {
+  if (strpos($url, 'batch') === 0) {
+    // Batch process.
+    return TRUE;
+  }
+
+  if ($url == 'admin' || strpos($url, 'admin/') === 0) {
+    // Admin pages.
+    return TRUE;
+  }
+
+  if (strpos($url, 'admin_menu/') === 0) {
+    // Admin menu pages.
+    return TRUE;
+  }
+
+  if (strpos($url, 'js/admin_menu/cache') === 0) {
+    // Admin menu JS cache.
+    return TRUE;
+  }
+
+  if (strpos($url, 'system/ajax') === 0) {
+    // Admin menu JS cache.
+    return TRUE;
+  }
+
+  if ($url == 'branches') {
+    // Branches overview page.
+    return TRUE;
+  }
 }
 
 
