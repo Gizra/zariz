@@ -6,9 +6,6 @@ Zariz is a suite of Drupal modules and methodology, that models content (nodes)
 creation and editing similar to Git's branches, and allows generating static
 sites from the Drupal backend.
 
-The counterpart of Zariz which is responsible for the static site creation is
-[generator-zariz](https://npmjs.org/package/generator-zariz).
-
 ## Posts and videos
 
 * [Zariz in pics](http://www.gizra.com/content/zariz-in-pics/)
@@ -118,5 +115,9 @@ drush dl entityreference_prepopulate replicate node_clone
 drush dl og --dev
 drush en zariz_example
 ```
+
+## Static site
+
+It is possible (and optional) to export Zariz sites in a _scalable manner_ using [generator-zariz](https://npmjs.org/package/generator-zariz).
 
 Developed by [Gizra](http://gizra.com)
